@@ -1,0 +1,21 @@
+[tool.poetry]
+name = "GlowBot"
+version = "0.1.0"
+description = "Glow's Battlegrounds Community Discord Bot"
+authors = ["Robb Manes <robbmanes@protonmail.com>"]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+"discord.py" = "^2.1.1"
+
+[tool.poetry.dev-dependencies]
+pytest = "^5.2"
+
+[tool.poetry.scripts]
+glowbot = "glowbot:main"
+
+[build-system]
+requires = [
+    "poetry-core>=1.0.0",
+]
+build-backend = "poetry.core.masonry.api"
