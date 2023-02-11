@@ -29,6 +29,11 @@ OS:       posix
 Python:   /usr
 ```
 
+To ensure your virtual environment is ready to run the project, make sure to install dependencies:
+```shell
+$ poetry install
+```
+
 ### Adding Dependencies
 The `poetry` command is capable of adding dependancies like so:
 ```shell
@@ -40,4 +45,10 @@ The package will be automatically added to the virtual environment as well as th
 [tool.poetry.dependencies]
 python = "^3.10"
 "discord.py" = "^2.1.1"
+```
+
+### Running Glowbot
+Assuming you have the proper virtual environment configured and currently active, use `poetry` to run Glowbot like so:
+```shell
+$ poetry run glowbot
 ```
