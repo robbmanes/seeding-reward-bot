@@ -1,5 +1,6 @@
 import asyncio
 from .config import Configuration
+from .dbconnector import DBConnection
 from .discord_bot import DiscordBot
 import logging
 
@@ -13,6 +14,12 @@ def main():
         config = Configuration()
     except Exception as e:
         logging.fatal("Failed to parse configuration: %s" % (e))
+
+    # Open database connection
+    try:
+        db = DBConnection(config.settings['database'])
+    except Exception as e:
+        logging.fatal("Failed to initialize database: %s" % (e))
 
     # Start Discord bot
     bot = DiscordBot(command_prefix='!')

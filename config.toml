@@ -6,3 +6,9 @@ discord_token = "DISCORD_TOKEN"
 discord_cogs = [
     'ping',
 ]
+
+[database]
+database_url = ""
+database_name = "glowbot"
+database_user = "glowbot"
+database_password = "glowbot"
