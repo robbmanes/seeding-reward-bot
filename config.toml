@@ -1,5 +1,8 @@
-[bot]
-# Discord Bot token
-token = "DISCORD_BOT_TOKEN"
-# Logging levels are INFO and DEBUG
+[glowbot]
 log_level = "DEBUG"
+
+[discord]
+discord_token = "DISCORD_TOKEN"
+discord_cogs = [
+    'ping',
+]
