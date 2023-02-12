@@ -1,2 +1,5 @@
 [bot]
-token = "DISCORD_API_TOKEN"
+# Discord Bot token
+token = "DISCORD_BOT_TOKEN"
+# Logging levels are INFO and DEBUG
+log_level = "DEBUG"
