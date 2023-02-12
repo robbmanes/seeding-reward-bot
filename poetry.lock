@@ -179,6 +179,14 @@ checkqa-mypy = ["mypy (==v0.761)"]
 testing = ["argcomplete", "hypothesis (>=3.56)", "mock", "nose", "requests", "xmlschema"]
 
 [[package]]
+name = "tomli"
+version = "2.0.1"
+description = "A lil' TOML parser"
+category = "main"
+optional = false
+python-versions = ">=3.7"
+
+[[package]]
 name = "wcwidth"
 version = "0.2.6"
 description = "Measures the displayed width of unicode strings in a terminal"
@@ -201,7 +209,7 @@ multidict = ">=4.0"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.10"
-content-hash = "6b8e01573de4e3f066cd17d7abc42c7a45d4602c4db2451caf60dad6c2528876"
+content-hash = "a96e217cddcd72c9a519d9127b4a7abd92a35c95f41edfdac39eaedbca392450"
 
 [metadata.files]
 aiohttp = []
@@ -220,5 +228,6 @@ packaging = []
 pluggy = []
 py = []
 pytest = []
+tomli = []
 wcwidth = []
 yarl = []

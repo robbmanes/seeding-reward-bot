@@ -1,6 +1,19 @@
 # GlowBot
 Discord Bot for [Glow's Battlegrounds Community](https://discord.gg/glows).
 
+## Setup
+This section talks about how to deploy the bot to your Discord server.
+
+### Creating the Bot via Discord Developer Portal
+The official instructions for creating a Discord Bot are located on the [discord.py home page](https://discordpy.readthedocs.io/en/stable/discord.html).
+
+This bot requires all three privileged intents:
+- Presence Intent
+- Server Members Intent
+- Message Content Intent
+
+Currently *all* permissions are required via the "Administer" permissions with the intent to limit this to a reasonable subset when minimum-product-viability is available.
+
 ## Development
 This section details how to set up a development environment for Glowbot.
 
