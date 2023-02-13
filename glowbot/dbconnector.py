@@ -9,7 +9,12 @@ class DBConnection(object):
         self.logger = logging.getLogger("Database")
         self.config = db_config
         try:
-            self.database = Database('mysql+aimoysql://%s' % (self.config['database_url']))
-            asyncio.run(database.connect())
+            self.database = Database('postgresql+asyncpg://%s:%s@%s' % (
+                self.config['database_user'],
+                self.config['database_password'],
+                self.config['database_url'],
+                )
+            )
+            asyncio.run(self.database.connect())
         except Exception as e:
             self.logger.fatal("Failed to connect to database: %s" % (e))

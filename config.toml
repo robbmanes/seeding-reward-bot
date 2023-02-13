@@ -8,7 +8,7 @@ discord_cogs = [
 ]
 
 [database]
-database_url = ""
+database_url = "localhost/glowbot"
 database_name = "glowbot"
 database_user = "glowbot"
 database_password = "glowbot"
