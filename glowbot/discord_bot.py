@@ -11,7 +11,7 @@ class DiscordBot(commands.Bot):
         intents = discord.Intents.all()
         super().__init__(command_prefix, intents=intents)
 
-        self.logger = logging.getLogger('DiscordBot')
+        self.logger = logging.getLogger(__package__)
     
     async def load_extensions(self, cog_list):
         for cog in cog_list:

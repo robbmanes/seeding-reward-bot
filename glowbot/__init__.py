@@ -14,24 +14,32 @@ def main():
         config = Configuration()
     except Exception as e:
         logging.fatal("Failed to parse configuration: %s" % (e))
+    
+    # Set logging level
+    logger = logging.getLogger(__package__)
+    match config.settings['glowbot']['log_level']:
+        case 'INFO':
+            logger.setLevel(logging.INFO)
+        case 'DEBUG':
+            logger.setLevel(logging.DEBUG)
 
     # Open database connection
     try:
         db = DBConnection(config.settings['database'])
     except Exception as e:
-        logging.fatal("Failed to initialize database: %s" % (e))
+        logger.fatal("Failed to initialize database: %s" % (e))
 
     # Start Discord bot
     bot = DiscordBot(command_prefix='!')
 
-    logging.info("Loading discord cog extensions...")
+    logger.info("Loading discord cog extensions...")
     try:
         asyncio.run(bot.load_extensions(config.settings['discord']['discord_cogs']))
     except Exception as e:
-        bot.logger.fatal("Failed to load cogs: %s" % (e))
+        logger.fatal("Failed to load cogs: %s" % (e))
 
-    logging.info("Starting discord services...")
+    logger.info("Starting discord services...")
     try:
         bot.run(config.settings['discord']['discord_token'], reconnect=True)
     except Exception as e:
-        logging.fatal("Failed to run discord bot: %s" % (e))
+        logger.fatal("Failed to run discord bot: %s" % (e))

@@ -6,7 +6,7 @@ import logging
 class DBConnection(object):
 
     def __init__(self, db_config):
-        self.logger = logging.getLogger("Database")
+        self.logger = logging.getLogger(__package__)
         self.config = db_config
         try:
             self.database = Database('postgresql+asyncpg://%s:%s@%s' % (
