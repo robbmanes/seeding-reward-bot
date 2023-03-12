@@ -7,6 +7,9 @@ _version__ = '0.1.0'
 
 
 def main():
+    """
+    main is the execution point for the discord bot.
+    """
     # Parse configuration
     logging.info("Parsing configuration file...")
     try:
@@ -25,6 +28,7 @@ def main():
     # Start Discord bot
     bot = DiscordBot(command_prefix='!')
     env_token = os.environ.get('DISCORD_TOKEN')
+
     if env_token is not None:
         config.settings['discord']['discord_token'] = env_token
 
