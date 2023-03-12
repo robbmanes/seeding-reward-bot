@@ -1,6 +1,5 @@
 import asyncio
 from .config import Configuration
-from .dbconnector import DBConnection
 from .discord_bot import DiscordBot
 import logging
 
@@ -17,20 +16,17 @@ def main():
     
     # Set logging level
     logger = logging.getLogger(__package__)
-    match config.settings['glowbot']['log_level']:
+    match config.settings['fishbot']['log_level']:
         case 'INFO':
             logger.setLevel(logging.INFO)
         case 'DEBUG':
             logger.setLevel(logging.DEBUG)
 
-    # Open database connection
-    try:
-        db = DBConnection(config.settings['database'])
-    except Exception as e:
-        logger.fatal("Failed to initialize database: %s" % (e))
-
     # Start Discord bot
     bot = DiscordBot(command_prefix='!')
+    env_token = os.environ.get('DISCORD_TOKEN')
+    if env_token is not None:
+        config.settings['discord']['discord_token'] = env_token
 
     logger.info("Loading discord cog extensions...")
     try:
