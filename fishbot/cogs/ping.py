@@ -1,14 +1,19 @@
+import discord
+from discord.commands import slash_command
 from discord.ext import commands
-
 
 class Ping(commands.Cog):
 
     def __init__(self, bot):
         self.bot = bot
 
-    @commands.command(name='ping')
+    @slash_command(name='ping',
+                   description='Send a ping, get a pong.')
     async def ping(self, ctx):
-        await ctx.send('pong!')
+        await ctx.respond('pong!')
 
-async def setup(bot):
-    await bot.add_cog(Ping(bot))
+def setup(bot):
+    bot.add_cog(Ping(bot))
+
+def teardown(bot):
+    pass

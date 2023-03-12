@@ -5,6 +5,7 @@ from discord.ext import commands
 import fishbot.cogs
 import logging
 import os
+import traceback
 
 
 class DiscordBot(commands.Bot):
@@ -21,9 +22,11 @@ class DiscordBot(commands.Bot):
     async def load_extensions(self, cog_list):
         for cog in cog_list:
             try:
-                await self.load_extension('fishbot.cogs.%s' % (cog))
+                self.load_extension('fishbot.cogs.%s' % (cog))
+                self.logger.info("Loaded cog \"%s\" successfully." % cog)
             except Exception as e:
                 self.logger.error("Failed to load cog '%s': %s" % (cog, e))
+                traceback.print_exc()
 
 
 def run_discord_bot():
@@ -34,6 +37,7 @@ def run_discord_bot():
         config = Configuration()
     except Exception as e:
         logging.fatal("Failed to parse configuration: %s" % (e))
+        traceback.print_exc()
     
     # Set logging level
     logger = logging.getLogger(__package__)
@@ -61,6 +65,7 @@ def run_discord_bot():
         bot.run(config.settings['discord']['discord_token'], reconnect=True)
     except Exception as e:
         logger.fatal("Failed to run discord bot: %s" % (e))
+        traceback.print_exc()
 
 if __name__ == '__main__':
     run_discord_bot()
