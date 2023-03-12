@@ -1,4 +1,4 @@
-import glowbot.cogs
+import fishbot.cogs
 import discord
 from discord.ext import commands
 import logging
@@ -16,6 +16,6 @@ class DiscordBot(commands.Bot):
     async def load_extensions(self, cog_list):
         for cog in cog_list:
             try:
-                await self.load_extension('glowbot.cogs.%s' % (cog))
+                await self.load_extension('fishbot.cogs.%s' % (cog))
             except Exception as e:
                 self.logger.error("Failed to load cog '%s': %s" % (cog, e))

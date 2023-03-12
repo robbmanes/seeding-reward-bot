@@ -1,14 +1,11 @@
-[glowbot]
+[fishbot]
 log_level = "DEBUG"
 
 [discord]
 discord_token = "DISCORD_TOKEN"
 discord_cogs = [
-    'ping',
+    "ping",
 ]
 
-[database]
-database_url = "localhost/glowbot"
-database_name = "glowbot"
-database_user = "glowbot"
-database_password = "glowbot"
+[database.sqlite]
+db_file = "fishbot.db"

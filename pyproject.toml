@@ -1,21 +1,22 @@
 [tool.poetry]
-name = "GlowBot"
+name = "fishbot"
 version = "0.1.0"
-description = "Glow's Battlegrounds Community Discord Bot"
+description = "Fishy Community Discord Bot"
 authors = ["Robb Manes <robbmanes@protonmail.com>"]
 
 [tool.poetry.dependencies]
 python = "^3.10"
 "discord.py" = "^2.1.1"
 tomli = "^2.0.1"
-databases = "^0.7.0"
+databases = {extras = ["aiosqlite"], version = "^0.7.0"}
 asyncpg = "^0.27.0"
+pycord = "^0.1.1"
 
 [tool.poetry.dev-dependencies]
 pytest = "^5.2"
 
 [tool.poetry.scripts]
-glowbot = "glowbot:main"
+fishbot-discord = "fishbot:main"
 
 [build-system]
 requires = [

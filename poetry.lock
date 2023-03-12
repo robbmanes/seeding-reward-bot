@@ -30,6 +30,14 @@ python-versions = ">=3.7"
 frozenlist = ">=1.1.0"
 
 [[package]]
+name = "aiosqlite"
+version = "0.18.0"
+description = "asyncio bridge to the standard sqlite3 module"
+category = "main"
+optional = false
+python-versions = ">=3.7"
+
+[[package]]
 name = "async-timeout"
 version = "4.0.2"
 description = "Timeout context manager for asyncio programs"
@@ -102,6 +110,7 @@ optional = false
 python-versions = ">=3.7"
 
 [package.dependencies]
+aiosqlite = {version = "*", optional = true, markers = "extra == \"aiosqlite\""}
 sqlalchemy = ">=1.4.42,<1.5"
 
 [package.extras]
@@ -132,12 +141,34 @@ test = ["coverage", "pytest", "pytest-asyncio", "pytest-cov", "pytest-mock", "ty
 voice = ["PyNaCl (>=1.3.0,<1.6)"]
 
 [[package]]
+name = "ffmpeg-python"
+version = "0.2.0"
+description = "Python bindings for FFmpeg - with complex filtering support"
+category = "main"
+optional = false
+python-versions = "*"
+
+[package.dependencies]
+future = "*"
+
+[package.extras]
+dev = ["future (==0.17.1)", "numpy (==1.16.4)", "pytest-mock (==1.10.4)", "pytest (==4.6.1)", "Sphinx (==2.1.0)", "tox (==3.12.1)"]
+
+[[package]]
 name = "frozenlist"
 version = "1.3.3"
 description = "A list-like structure which implements collections.abc.MutableSequence"
 category = "main"
 optional = false
 python-versions = ">=3.7"
+
+[[package]]
+name = "future"
+version = "0.18.3"
+description = "Clean single-source support for Python 3 and 2"
+category = "main"
+optional = false
+python-versions = ">=2.6, !=3.0.*, !=3.1.*, !=3.2.*"
 
 [[package]]
 name = "greenlet"
@@ -160,6 +191,14 @@ optional = false
 python-versions = ">=3.5"
 
 [[package]]
+name = "imageio-ffmpeg"
+version = "0.4.8"
+description = "FFMPEG wrapper for Python"
+category = "main"
+optional = false
+python-versions = ">=3.5"
+
+[[package]]
 name = "more-itertools"
 version = "9.0.0"
 description = "More routines for operating on iterables, beyond itertools"
@@ -174,6 +213,14 @@ description = "multidict implementation"
 category = "main"
 optional = false
 python-versions = ">=3.7"
+
+[[package]]
+name = "numpy"
+version = "1.24.2"
+description = "Fundamental package for array computing in Python"
+category = "main"
+optional = false
+python-versions = ">=3.8"
 
 [[package]]
 name = "packaging"
@@ -201,6 +248,22 @@ description = "library with cross-python path, ini-parsing, io, code, log facili
 category = "dev"
 optional = false
 python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*"
+
+[[package]]
+name = "pycord"
+version = "0.1.1"
+description = "Convenient wrapper on top of FFmpeg"
+category = "main"
+optional = false
+python-versions = ">=3.5"
+
+[package.dependencies]
+ffmpeg-python = ">=0.2.0"
+imageio-ffmpeg = ">=0.4.2"
+numpy = "*"
+
+[package.extras]
+dev = ["pytest", "pytest-cov"]
 
 [[package]]
 name = "pytest"
@@ -287,11 +350,12 @@ multidict = ">=4.0"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.10"
-content-hash = "b9385bb4212e35d04bd037a3cd299bd3a1f1bf7b1fac0cac48635017097aefaa"
+content-hash = "db84014540cdfae806061753090fa773254a96ca205bb09de57777a049e1ea3b"
 
 [metadata.files]
 aiohttp = []
 aiosignal = []
+aiosqlite = []
 async-timeout = []
 asyncpg = []
 atomicwrites = []
@@ -300,14 +364,19 @@ charset-normalizer = []
 colorama = []
 databases = []
 "discord.py" = []
+ffmpeg-python = []
 frozenlist = []
+future = []
 greenlet = []
 idna = []
+imageio-ffmpeg = []
 more-itertools = []
 multidict = []
+numpy = []
 packaging = []
 pluggy = []
 py = []
+pycord = []
 pytest = []
 sqlalchemy = []
 tomli = []

@@ -1,5 +1,9 @@
-# GlowBot
-Discord Bot for [Glow's Battlegrounds Community](https://discord.gg/glows).
+# fishbot
+Community Discord Bot.
+
+Proudly used in:
+- [Tuna's Market](https://discord.gg/Hh5HcSJENc)
+- [Glow's Battlegrounds Community](https://discord.gg/glows).
 
 ## Setup
 This section talks about how to deploy the bot to your Discord server.
@@ -7,7 +11,7 @@ This section talks about how to deploy the bot to your Discord server.
 ### Creating the Bot via Discord Developer Portal
 The official instructions for creating a Discord Bot are located on the [discord.py home page](https://discordpy.readthedocs.io/en/stable/discord.html).
 
-This bot requires all three privileged intents:
+This bot requires all three privileged intents currently:
 - Presence Intent
 - Server Members Intent
 - Message Content Intent
@@ -15,7 +19,7 @@ This bot requires all three privileged intents:
 Currently *all* permissions are required via the "Administer" permissions with the intent to limit this to a reasonable subset when minimum-product-viability is available.
 
 ## Development
-This section details how to set up a development environment for Glowbot.
+This section details how to set up a development environment for `fishbot`.
 
 ### Install Poetry
 Building and Development is done with [poetry](https://python-poetry.org/docs/).  Ensure you have install poetry on your local system prior to beginning development:
@@ -33,7 +37,7 @@ $ poetry env info
 Virtualenv
 Python:         3.10.6
 Implementation: CPython
-Path:           /home/rmanes/.cache/pypoetry/virtualenvs/glowbot1-tut94FM2-py3.10
+Path:           /home/rmanes/.cache/pypoetry/virtualenvs/fishbot1-tut94FM2-py3.10
 Valid:          True
 
 System
@@ -60,8 +64,8 @@ python = "^3.10"
 "discord.py" = "^2.1.1"
 ```
 
-### Running Glowbot
-Assuming you have the proper virtual environment configured and currently active, use `poetry` to run Glowbot like so:
+### Running fishbot-discord
+Assuming you have the proper virtual environment configured and currently active, use `poetry` to run `fishbot` like so:
 ```shell
-$ poetry run glowbot
+$ poetry run fishbot-discord
 ```
