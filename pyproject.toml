@@ -16,7 +16,7 @@ pycord = "^0.1.1"
 pytest = "^5.2"
 
 [tool.poetry.scripts]
-fishbot-discord = "fishbot:main"
+fishbot-discord = "fishbot.discord_bot:run_discord_bot"
 
 [build-system]
 requires = [
