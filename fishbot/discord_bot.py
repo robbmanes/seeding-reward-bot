@@ -24,7 +24,7 @@ class DiscordBot(commands.Bot):
 
         self.logger = logging.getLogger(__package__)
     
-    def load_extensions(self):
+    async def load_extensions(self):
         for cog in self.cogs:
             try:
                 self.load_extension(cog)
