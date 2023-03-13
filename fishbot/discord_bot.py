@@ -41,6 +41,9 @@ class DiscordBot(commands.Bot):
         )
         
         await Tortoise.generate_schemas()
+    
+    def load_config(self, config):
+        self.config = config
 
 
 def run_discord_bot():
@@ -67,14 +70,17 @@ def run_discord_bot():
     if env_token is not None:
         config.settings['discord']['discord_token'] = env_token
 
-    # Start Discord bot
+    # Discord bot logic
     bot = DiscordBot(command_prefix='!')
+
+    # We load the configuration as late as possible to allow for customization.
+    bot.load_config(config.settings)
 
     logger.info("Loading discord cog extensions...")
     try:
         asyncio.run(
             bot.load_extensions(
-                config.settings['discord']['discord_cogs']
+                bot.config['discord']['discord_cogs']
             )
         )
     except Exception as e:
@@ -84,7 +90,7 @@ def run_discord_bot():
     try:
         asyncio.run(
             bot.init_db(
-                config.settings['database']['sqlite']['db_file'],
+                bot.config['database']['sqlite']['db_file'],
             )
         )
     except Exception as e:
@@ -94,7 +100,7 @@ def run_discord_bot():
 
     logger.info("Starting discord services...")
     try:
-        bot.run(config.settings['discord']['discord_token'], reconnect=True)
+        bot.run(bot.config['discord']['discord_token'], reconnect=True)
     except Exception as e:
         logger.fatal("Failed to run discord bot: %s" % (e))
         traceback.print_exc()
