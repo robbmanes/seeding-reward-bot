@@ -9,7 +9,7 @@ python = "^3.10"
 tomli = "^2.0.1"
 asyncpg = "^0.27.0"
 py-cord = "^2.4.0"
-tortoise-orm = "^0.19.3"
+tortoise-orm = {extras = ["asyncpg"], version = "^0.19.3"}
 
 [tool.poetry.dev-dependencies]
 pytest = "^5.2"

@@ -241,6 +241,7 @@ python-versions = ">=3.7,<4.0"
 
 [package.dependencies]
 aiosqlite = ">=0.16.0,<0.18.0"
+asyncpg = {version = "*", optional = true, markers = "extra == \"asyncpg\""}
 iso8601 = ">=1.0.2,<2.0.0"
 pypika-tortoise = ">=0.1.6,<0.2.0"
 pytz = "*"
@@ -284,7 +285,7 @@ multidict = ">=4.0"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.10"
-content-hash = "d6b8b2bd46b857fde60765729c5d8e963dde7e2b242286c9901ffb1029c3e64b"
+content-hash = "653eed6c0fd22d09073eb0097f57ee43a1e551ae046a5460b11dda5bf578359a"
 
 [metadata.files]
 aiohttp = []

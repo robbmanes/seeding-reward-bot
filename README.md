@@ -64,6 +64,33 @@ python = "^3.10"
 "discord.py" = "^2.1.1"
 ```
 
+### Database Configuration
+Currently `sqlite` and `postgres` are the only supported database types.
+
+Only *one* type of database can be configured at a time.  If both are present in configuration, the bot should fail.
+
+#### SQLite configuration
+This configuration is very easy and requires little to no configuration.  Simply add the following to your `config.toml` (which is in the default `toml` file already):
+```toml
+[database.sqlite]
+db_file = "fishbot.db"
+```
+
+This will create an SQLite database file at the root of the `fishbot` project.
+
+### PostgeSQL configuration.
+Postgres requires the following configuration defined in the `config.toml` to function:
+```toml
+[database.postgres]
+db_user = "myuser"
+db_password = "mypassword"
+db_url = "localhost"
+db_port = 5432
+db_name = "mydb"
+```
+
+The above example will equate to a connection string of `postgres://myuser:mypassword/localhost:5432/mydb` to connect to an existing PostgreSQL instance.
+
 ### Running fishbot-discord
 Assuming you have the proper virtual environment configured and currently active, use `poetry` to run `fishbot` like so:
 ```shell
