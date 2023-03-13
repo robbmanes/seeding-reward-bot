@@ -7,9 +7,9 @@ authors = ["Robb Manes <robbmanes@protonmail.com>"]
 [tool.poetry.dependencies]
 python = "^3.10"
 tomli = "^2.0.1"
-databases = {extras = ["aiosqlite"], version = "^0.7.0"}
 asyncpg = "^0.27.0"
 py-cord = "^2.4.0"
+tortoise-orm = "^0.19.3"
 
 [tool.poetry.dev-dependencies]
 pytest = "^5.2"
