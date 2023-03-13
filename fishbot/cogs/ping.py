@@ -16,11 +16,12 @@ class Ping(commands.Cog):
         user = ctx.author
         record = await PingModel.filter(uid__contains=user)
         if not record:
-            await PingModel.create(uid=user, ping_count=1)
+            p = PingModel(uid=user, ping_count=1)
+            await p.save()
             count = 1
         else:
             count = record[0].ping_count + 1
-            await PingModel.filter(uid__contains=user).update(ping_count=(record[0].ping_count + 1))
+            await record.update(ping_count=(record[0].ping_count + 1))
         await ctx.respond(f'Pong! {ctx.author.mention} has pinged me `{count}` times.')
 
 class PingModel(Model):
