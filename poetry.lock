@@ -252,7 +252,7 @@ asyncmy = ["asyncmy (>=0.2.5,<0.3.0)"]
 asyncodbc = ["asyncodbc (>=0.1.1,<0.2.0)"]
 asyncpg = ["asyncpg"]
 accel = ["ciso8601", "orjson", "uvloop"]
-psycopg = ["psycopg[pool,binary] (==3.0.12)"]
+psycopg = ["psycopg[binary,pool] (==3.0.12)"]
 
 [[package]]
 name = "typing-extensions"
@@ -285,7 +285,7 @@ multidict = ">=4.0"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.10"
-content-hash = "653eed6c0fd22d09073eb0097f57ee43a1e551ae046a5460b11dda5bf578359a"
+content-hash = "40c83dc4c876622fa35232ea254dfc85aec44bcd9f02f59b6ea7f9f8b3255f58"
 
 [metadata.files]
 aiohttp = []
