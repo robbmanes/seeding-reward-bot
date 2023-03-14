@@ -15,7 +15,7 @@ class DiscordBot(commands.Bot):
     Primary class representing a single discord bot belonging to a single server.
     """
 
-    models = []
+    models = ['aerich.models']
     cogs = []
 
     def __init__(self, command_prefix):
