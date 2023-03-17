@@ -1,5 +1,4 @@
 import asyncio
-from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from .config import Configuration
 import discord
 from discord.ext import commands
@@ -116,13 +115,6 @@ class DiscordBot(commands.Bot):
             await self.init_db()
         except Exception as e:
             self.logger.fatal("Failed to initialize database: %s" % (e))
-            traceback.print_exc()
-
-        self.logger.info("Adding apscheduler into event loop...")
-        try:
-            self.scheduler = AsyncIOScheduler()
-        except Exception as e:
-            self.logger.fatal("Failed to load event scheduler: %s" % (e))
             traceback.print_exc()
 
 
