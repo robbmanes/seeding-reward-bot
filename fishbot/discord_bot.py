@@ -1,4 +1,5 @@
 import asyncio
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from .config import Configuration
 import discord
 from discord.ext import commands
@@ -117,6 +118,13 @@ class DiscordBot(commands.Bot):
             self.logger.fatal("Failed to initialize database: %s" % (e))
             traceback.print_exc()
 
+        self.logger.info("Adding apscheduler into event loop...")
+        try:
+            self.scheduler = AsyncIOScheduler()
+        except Exception as e:
+            self.logger.fatal("Failed to load event scheduler: %s" % (e))
+            traceback.print_exc()
+
 
 def run_discord_bot():
     """primary execution point for the discord bot."""
@@ -138,6 +146,7 @@ def run_discord_bot():
     
     # Check environment variables to override settings file
     env_token = os.environ.get('DISCORD_TOKEN')
+    print(env_token)
 
     if env_token is not None:
         config.settings['discord']['discord_token'] = env_token
