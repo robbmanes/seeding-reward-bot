@@ -146,7 +146,6 @@ def run_discord_bot():
     
     # Check environment variables to override settings file
     env_token = os.environ.get('DISCORD_TOKEN')
-    print(env_token)
 
     if env_token is not None:
         config.settings['discord']['discord_token'] = env_token
