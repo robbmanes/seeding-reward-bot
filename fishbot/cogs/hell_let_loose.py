@@ -80,7 +80,12 @@ class HellLetLoose(commands.Cog):
             await ctx.respond(f'Your Discord ID doesn\'t match any known `steam64id`. Use `/hll steam64id` to tie your ID to your discord.')
             return
         player = query_result[0]
-        await ctx.respond(f'{ctx.author.mention} has been seeding for `{player.total_seeding_time}` hours. Last seeding time was `{player.last_seed_check}`')
+        message = f'Seeding stats for {ctx.author.mention}:'
+        message += f'\n 🌱 Total seeding time (hours): `{player.total_seeding_time}`'
+        message += f'\n 🏦 Unspent seeding time balance: `{player.seeding_time_balance}`'
+        message += f'\n 🕰️ Last seeding time: `{player.last_seed_check}`'
+        message += f'\n ℹ️ Turn your seeding hours into VIP time with `/hll claim`. '
+        await ctx.respond(message)
 
     @hll.command()
     async def vip(self, ctx: discord.ApplicationContext):
@@ -94,14 +99,66 @@ class HellLetLoose(commands.Cog):
             return
         player = query_result[0]
         vip = await self.get_vip(player.steam_id_64)
-        if vip == None:
+        if vip == None or vip['vip_expiration'] == None:
             await ctx.respond(f'No VIP record found for {ctx.author.mention}.')
-            return
-        expiration = datetime.strptime(vip['vip_expiration'], "%Y-%m-%dT%H:%M:%S%z")
+            return  
+        expiration = datetime.strptime(vip['vip_expiration'], "%Y-%m-%dT%H:%M:%S.%f%z")
         if expiration.timestamp() < datetime.now().timestamp():
             await ctx.respond(f'{ctx.author.mention}: your VIP appears to have expired.')
             return
         await ctx.respond(f'{ctx.author.mention}: your VIP expiration date is `{expiration}`')
+
+    @hll.command()
+    async def claim(self, ctx: discord.ApplicationContext, hours: Option(
+            int,
+            "Redeem seeding hours for VIP status",
+            required=False,
+        )
+    ):
+        """Redeem seeding hours for VIP status"""
+        await ctx.defer()
+        if hours is None:
+            vip_value = self.bot.config['hell_let_loose']['seeder_vip_reward_hours']
+            message = f'{ctx.author.mention}:'
+            message += f'\n💵 Use `/hll claim $HOURS` to turn seeding hours into VIP status.'
+            message += f'\n🚜 One hour of seeding time is `{vip_value}` hour(s) of VIP status.'
+            message += f'\nℹ️ Check your seeding hours with `/hll seeder`.'
+            await ctx.respond(message)
+        else:
+            query_set = await HLL_Player.filter(discord_id__contains=ctx.author.id)
+            if len(query_set) == 0:
+                message = f'{ctx.author.mention}: Can\'t find your ID to claim VIP.'
+                message += f'\nMake sure you have run `/hll steam64id` and registered your Steam and Discord.'
+                await ctx.respond(message)
+            elif len(query_set) != 1:
+                self.logger.fatal("Multiple discord_id's found for %s!" % (ctx.author.id))
+                await ctx.respond(f'Problem when looking up your steam/discord: multiple results found. Please ping an administrator!')
+            else:
+                player = query_set[0]
+                self.logger.debug(f'User \"{ctx.author.name}/{player.steam_id_64}\" is attempting to claim {hours} seeder hours from their total of {player.seeding_time_balance}.')
+                if hours > int(player.seeding_time_balance):
+                    await ctx.respond(f'{ctx.author.mention}: ❌ Sorry, not enough banked time to claim `{hours}` hour(s) of VIP (Currently have `{int(player.seeding_time_balance)}` banked hours).')
+                else:
+                    player.seeding_time_balance -= hours
+                    vip = await self.get_vip(player.steam_id_64)
+                    grant_value = self.bot.config['hell_let_loose']['seeder_vip_reward_hours'] * hours
+                    if vip is None or vip['vip_expiration'] == None:
+                        expiration = datetime.now() + timedelta(hours=grant_value)
+                    else:
+                        expiration = datetime.strptime(vip['vip_expiration'], "%Y-%m-%dT%H:%M:%S.%f%z") + timedelta(hours=grant_value)
+
+                    result = await self.grant_vip(player.player_name, player.steam_id_64, expiration.strftime("%Y-%m-%dT%H:%M:%S.%f%z"))
+                    if result is not False:
+                        await player.save()
+                        message = f'{ctx.author.mention}: You\'ve added `{grant_value}` hour(s) to your VIP status.'
+                        message += f'\nYou have VIP until `{expiration}`'
+                        message += f'\nYour remaining seeder balance is `{int(player.seeding_time_balance) - hours}` hour(s).'
+                        message += f'\n💗 Thanks for seeding! 💗'
+                        await ctx.respond(message)
+                        return
+
+                    self.logger.fatal(f'Failed claiming VIP for \"{ctx.author.name}/{player.steam_id_64}\: {result}')
+                    await ctx.respond(f'{ctx.author.mention}: There was a problem claiming VIP.')
 
     def with_rcon_session(fn):
         """
@@ -195,6 +252,7 @@ class HellLetLoose(commands.Cog):
         Must supply the RCON server arguments:
         name -- user's name in RCON
         steam_id_64 -- user's `steam64id`
+        expiration -- time VIP expires
 
         Returns True for success, False for failure.
         """
@@ -202,7 +260,7 @@ class HellLetLoose(commands.Cog):
             '%s/api/do_add_vip' % (rcon_server_url),
             json={
                 'name': name,
-                'steam_id_64': steam_id_64,
+                'steam_id_64': str(steam_id_64),
                 'expiration': expiration,
             }
         ) as response:
@@ -211,7 +269,7 @@ class HellLetLoose(commands.Cog):
                 self.logger.debug(f'Granted VIP to user \"{name}/{steam_id_64}\", expiration {expiration}')
                 return True
             else:
-                self.logger.error(f'Failed to update VIP user on "\{rcon_server_url}\": {result}')
+                self.logger.error(f'Failed to update VIP user on \"{rcon_server_url}\": {result}')
                 return False
 
     @with_rcon_session
@@ -221,7 +279,7 @@ class HellLetLoose(commands.Cog):
             '%s/api/do_remove_vip' % (rcon_server_url),
             json={
                 'name': name,
-                'steam_id_64': steam_id_64,
+                'steam_id_64': int(steam_id_64),
             }
         ) as response:
             result = await response.json()
