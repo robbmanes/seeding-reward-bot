@@ -34,7 +34,12 @@ class HellLetLoose(commands.Cog):
         self.bot = bot
         self.logger = logging.getLogger(__name__)
         self.update_seeders.start()
-        self.session = aiohttp.ClientSession()
+
+        # Open an aiohttp session per RCON endpoint
+        self.sessions = {}
+        for rcon_server_url in self.bot.config['hell_let_loose']['rcon_url']:
+            self.sessions[rcon_server_url] = aiohttp.ClientSession()
+
     
     @hll.command()
     async def steam64id(self, ctx: discord.ApplicationContext, steam64: Option(
@@ -98,11 +103,27 @@ class HellLetLoose(commands.Cog):
             await ctx.respond(f'Your Discord ID doesn\'t match any known `steam64id`. Use `/hll steam64id` to tie your ID to your discord.')
             return
         player = query_result[0]
-        vip = await self.get_vip(player.steam_id_64)
+
+        # We need to ensure we get the same VIP states for both RCON's.
+        vip_dict = await self.get_vip(player.steam_id_64)
+        vip_entries = []
+        for key, vip in vip_dict.items():
+            vip_entries.append(vip)
+
+        if all(val != vip_entries[0] for val in vip_entries):
+            # VIP from all RCON's didn't match, notify.
+            await ctx.respond(f'{ctx.author.mention}: It looks like your VIP status is different between servers, please contact an admin.')
+            return
+
+        # All is well, return to the (identical) first in the list
+        vip = vip_entries.pop()
+
         if vip == None or vip['vip_expiration'] == None:
             await ctx.respond(f'No VIP record found for {ctx.author.mention}.')
             return  
-        expiration = datetime.strptime(vip['vip_expiration'], "%Y-%m-%dT%H:%M:%S.%f%z")
+
+        # For some reason, the vip_expiration field drops the .f requirement in the format here.
+        expiration = datetime.strptime(vip['vip_expiration'], "%Y-%m-%dT%H:%M:%S%z")
         if expiration.timestamp() < datetime.now().timestamp():
             await ctx.respond(f'{ctx.author.mention}: your VIP appears to have expired.')
             return
@@ -140,60 +161,99 @@ class HellLetLoose(commands.Cog):
                     await ctx.respond(f'{ctx.author.mention}: ❌ Sorry, not enough banked time to claim `{hours}` hour(s) of VIP (Currently have `{int(player.seeding_time_balance)}` banked hours).')
                 else:
                     player.seeding_time_balance -= hours
-                    vip = await self.get_vip(player.steam_id_64)
+
+                    # Check the previous VIP values from both RCON's to ensure they are identical prior to proceeding
+                    vip_dict = await self.get_vip(player.steam_id_64)
+                    vip_entries = []
+                    for key, vip in vip_dict.items():
+                        vip_entries.append(vip)
+                    if all(val != vip_entries[0] for val in vip_entries):
+                        # VIP from all RCON's didn't match, notify.
+                        await ctx.respond(f'{ctx.author.mention}: It looks like your VIP status is different between servers, please contact an admin.')
+                        return
+
+                    # All is well, return to the (identical) first in the list
+                    vip = vip_entries.pop()
+                    
                     grant_value = self.bot.config['hell_let_loose']['seeder_vip_reward_hours'] * hours
                     if vip is None or vip['vip_expiration'] == None:
                         expiration = datetime.now() + timedelta(hours=grant_value)
                     else:
-                        expiration = datetime.strptime(vip['vip_expiration'], "%Y-%m-%dT%H:%M:%S.%f%z") + timedelta(hours=grant_value)
+                        expiration = datetime.strptime(vip['vip_expiration'], "%Y-%m-%dT%H:%M:%S%z") + timedelta(hours=grant_value)
 
-                    result = await self.grant_vip(player.player_name, player.steam_id_64, expiration.strftime("%Y-%m-%dT%H:%M:%S.%f%z"))
-                    if result is not False:
-                        await player.save()
-                        message = f'{ctx.author.mention}: You\'ve added `{grant_value}` hour(s) to your VIP status.'
-                        message += f'\nYou have VIP until `{expiration}`'
-                        message += f'\nYour remaining seeder balance is `{int(player.seeding_time_balance) - hours}` hour(s).'
-                        message += f'\n💗 Thanks for seeding! 💗'
-                        await ctx.respond(message)
-                        return
+                    # Make sure all RCON grants are successful.
+                    result_dict = await self.grant_vip(player.player_name, player.steam_id_64, expiration.strftime("%Y-%m-%dT%H:%M:%S%z"))
+                    for rcon, result in result_dict.items():
+                        if result is False:
+                            self.logger.error(f'Problem assigning VIP in `claim` for \"{rcon}\": {result}')
+                            await ctx.respond(f'{ctx.author.mention}: There was a problem on one of the servers assigning your VIP.')
+                            return
 
-                    self.logger.fatal(f'Failed claiming VIP for \"{ctx.author.name}/{player.steam_id_64}\: {result}')
-                    await ctx.respond(f'{ctx.author.mention}: There was a problem claiming VIP.')
+                    await player.save()
+                    message = f'{ctx.author.mention}: You\'ve added `{grant_value}` hour(s) to your VIP status.'
+                    message += f'\nYou have VIP until `{expiration}`'
+                    message += f'\nYour remaining seeder balance is `{int(player.seeding_time_balance) - hours}` hour(s).'
+                    message += f'\n💗 Thanks for seeding! 💗'
+                    await ctx.respond(message)
+                    return
 
-    def with_rcon_session(fn):
+                self.logger.fatal(f'Failed claiming VIP for \"{ctx.author.name}/{player.steam_id_64}\: {result}')
+                await ctx.respond(f'{ctx.author.mention}: There was a problem claiming VIP.')
+    
+    def for_each_rcon(fn):
         """
-        Decorator for methods using rcon sessions.
-        Ensures existing aiohttp handler is in use and subsequently ensures token is present.
+        Decorator to apply method to all RCON servers in a list.
         Will iterate through all RCON servers in a list, meaning it calls it's wrapped
         function multiple times (once per server).
+
+        This decorator additionally handles auth to the RCON's.
+
+        Methods that call methods wrapped in this decorator should *always* expect a dict reply where the key of the
+        dict is the RCON URL and the value is the return of the function.
+
+        Ideally this method is adapted later to handle comparison of the values from different RCON's via a standard reply
+        but for now the caller has to evaluate the returned dict themselves.
         """
         async def wrapper(self, *args):
-            for rcon_server_url in self.bot.config['hell_let_loose']['rcon_url']:
-                async with self.session.get(
-                    '%s/api/is_logged_in' % (rcon_server_url)
-                ) as response:
-                    r = await response.json()
-                    if r['result']['authenticated'] == False:
-                        async with self.session.post(
-                            '%s/api/login' % (rcon_server_url),
-                            json={
-                                'username': self.bot.config['hell_let_loose']['rcon_user'],
-                                'password': self.bot.config['hell_let_loose']['rcon_password'],
-                            },
-                        ) as response:
-                            r = await response.json()
-                            if r['failed'] is False:
-                                self.bot.logger.info(f'Successful RCON login to {rcon_server_url}')
-                            else:
-                                self.bot.logger.error(f'Failed to log into {rcon_server_url}: \"{r}\"')
+            ret_vals = {}
+            for rcon_server_url, session in self.sessions.items():
+                self.logger.debug(f'Executing \"{fn.__name__}\" with RCON \"{rcon_server_url}\" as an endpoint...')
+                res = await self.handle_rcon_auth(rcon_server_url, session)
                 try:
-                    return await fn(self, rcon_server_url, self.session, *args)
+                    res = await fn(self, rcon_server_url, session, *args)
+                    ret_vals[rcon_server_url] = res
                 except Exception as e:
                     raise
+                # We need to check if the return value is identical for each RCON.
+                # If it is not, error/alert to avoid deviant behavior.
+                
+            return ret_vals
         return wrapper
 
+    async def handle_rcon_auth(self, rcon_server_url, session):
+        """
+        Takes a session and checks authentication to an endpoint.
+        """
+        async with session.get(
+            '%s/api/is_logged_in' % (rcon_server_url)
+        ) as response:
+            r = await response.json()
+            if r['result']['authenticated'] == False:
+                async with session.post(
+                    '%s/api/login' % (rcon_server_url),
+                    json={
+                        'username': self.bot.config['hell_let_loose']['rcon_user'],
+                        'password': self.bot.config['hell_let_loose']['rcon_password'],
+                    },
+                ) as response:
+                    r = await response.json()
+                    if r['failed'] is False:
+                        self.bot.logger.info(f'Successful RCON login to {rcon_server_url}')
+                    else:
+                        self.bot.logger.error(f'Failed to log into {rcon_server_url}: \"{r}\"')
+
     @tasks.loop(minutes=SEEDING_INCREMENT_TIMER)
-    @with_rcon_session
+    @for_each_rcon
     async def update_seeders(self, rcon_server_url, session):
         """
         Check if a server is in seeding status and record seeding statistics.
@@ -248,7 +308,7 @@ class HellLetLoose(commands.Cog):
                     )
                 )
     
-    @with_rcon_session
+    @for_each_rcon
     async def grant_vip(self, rcon_server_url, session, name, steam_id_64, expiration):
         """
         Add a new VIP entry to the RCON instances or update an existing entry.
@@ -276,7 +336,7 @@ class HellLetLoose(commands.Cog):
                 self.logger.error(f'Failed to update VIP user on \"{rcon_server_url}\": {result}')
                 return False
 
-    @with_rcon_session
+    @for_each_rcon
     async def revoke_vip(self, rcon_server_url, session, name, steam_id_64):
         """Completely remove a VIP entry from the RCON instances."""
         async with session.post(
@@ -294,7 +354,7 @@ class HellLetLoose(commands.Cog):
                 self.logger.error(f'Failed to remove VIP user on "\{rcon_server_url}\": {result}')
                 return False
     
-    @with_rcon_session
+    @for_each_rcon
     async def get_vip(self, rcon_server_url, session, steam_id_64):
         """
         Queries the RCON server for all VIP's, and returns a single VIP object
@@ -322,7 +382,7 @@ class HellLetLoose(commands.Cog):
             raise error
     
     def cog_unload(self):
-        self.bot.loop.run_until_complete(self.session.close())
+        pass
 
 class HLL_Player(Model):
     steam_id_64 = fields.BigIntField()
