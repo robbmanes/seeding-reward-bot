@@ -181,7 +181,11 @@ class HellLetLoose(commands.Cog):
                                 'password': self.bot.config['hell_let_loose']['rcon_password'],
                             },
                         ) as response:
-                            self.bot.logger.info("Successful RCON login: %s", await response.json())
+                            r = await response.json()
+                            if r['failed'] is False:
+                                self.bot.logger.info(f'Successful RCON login to {rcon_server_url}')
+                            else:
+                                self.bot.logger.error(f'Failed to log into {rcon_server_url}: \"{r}\"')
                 try:
                     return await fn(self, rcon_server_url, self.session, *args)
                 except Exception as e:
