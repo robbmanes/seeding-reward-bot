@@ -25,6 +25,7 @@ class HellLetLoose(commands.Cog):
     rcon_password -- `str`, password for login to RCON
     seeding_threshold -- `int`, number of players a server must exceed to no longer count as seeding
     seeder_vip_reward_hours -- `int`, number of hours that 1 hour of seeding time grants VIP status for
+    seeder_reward_message -- `str`, message given to seeders in-game when they gain rewards
     ```
     """
 
@@ -87,7 +88,7 @@ class HellLetLoose(commands.Cog):
         player = query_result[0]
         message = f'Seeding stats for {ctx.author.mention}:'
         message += f'\n 🌱 Total seeding time (hours): `{player.total_seeding_time}`'
-        message += f'\n 🏦 Unspent seeding time balance: `{player.seeding_time_balance}`'
+        message += f'\n 🏦 Unspent seeding time balance (hours): `{player.seeding_time_balance}`'
         message += f'\n 🕰️ Last seeding time: `{player.last_seed_check}`'
         message += f'\n ℹ️ Turn your seeding hours into VIP time with `/hll claim`. '
         await ctx.respond(message)
@@ -157,10 +158,11 @@ class HellLetLoose(commands.Cog):
             else:
                 player = query_set[0]
                 self.logger.debug(f'User \"{ctx.author.name}/{player.steam_id_64}\" is attempting to claim {hours} seeder hours from their total of {player.seeding_time_balance}.')
-                if hours > int(player.seeding_time_balance):
-                    await ctx.respond(f'{ctx.author.mention}: ❌ Sorry, not enough banked time to claim `{hours}` hour(s) of VIP (Currently have `{int(player.seeding_time_balance)}` banked hours).')
+                if hours > player.seeding_time_balance.seconds // 3600:
+                    await ctx.respond(f'{ctx.author.mention}: ❌ Sorry, not enough banked time to claim `{hours}` hour(s) of VIP (Currently have `{player.seeding_time_balance.seconds // 3600}` banked hours).')
+                    return
                 else:
-                    player.seeding_time_balance -= hours
+                    player.seeding_time_balance -= timedelta(hours=hours)
 
                     # Check the previous VIP values from both RCON's to ensure they are identical prior to proceeding
                     vip_dict = await self.get_vip(player.steam_id_64)
@@ -189,17 +191,32 @@ class HellLetLoose(commands.Cog):
                             await ctx.respond(f'{ctx.author.mention}: There was a problem on one of the servers assigning your VIP.')
                             return
 
-                    await player.save()
                     message = f'{ctx.author.mention}: You\'ve added `{grant_value}` hour(s) to your VIP status.'
                     message += f'\nYou have VIP until `{expiration}`'
-                    message += f'\nYour remaining seeder balance is `{int(player.seeding_time_balance) - hours}` hour(s).'
+                    message += f'\nYour remaining seeder balance is `{player.seeding_time_balance}` hour(s).'
                     message += f'\n💗 Thanks for seeding! 💗'
+                    await player.save()
                     await ctx.respond(message)
                     return
 
                 self.logger.fatal(f'Failed claiming VIP for \"{ctx.author.name}/{player.steam_id_64}\: {result}')
                 await ctx.respond(f'{ctx.author.mention}: There was a problem claiming VIP.')
-    
+
+    def for_single_rcon(fn):
+        """
+        Decorator to apply method to only ever work on a singe RCON server,
+        like sending a player a message (since they can't be logged in to two
+        HLL instances at once).
+
+        This decorator handles auth to the RCON for the session.
+        """
+        async def wrapper(self, rcon_server_url, session, *args):
+            res = await self.handle_rcon_auth(rcon_server_url, session)
+            self.logger.debug(f'Executing \"{fn.__name__}\" with RCON \"{rcon_server_url}\" as an endpoint...')
+            res = await fn(self, rcon_server_url, session, *args)
+            return res
+        return wrapper
+
     def for_each_rcon(fn):
         """
         Decorator to apply method to all RCON servers in a list.
@@ -217,9 +234,9 @@ class HellLetLoose(commands.Cog):
         async def wrapper(self, *args):
             ret_vals = {}
             for rcon_server_url, session in self.sessions.items():
-                self.logger.debug(f'Executing \"{fn.__name__}\" with RCON \"{rcon_server_url}\" as an endpoint...')
                 res = await self.handle_rcon_auth(rcon_server_url, session)
                 try:
+                    self.logger.debug(f'Executing \"{fn.__name__}\" with RCON \"{rcon_server_url}\" as an endpoint...')
                     res = await fn(self, rcon_server_url, session, *args)
                     ret_vals[rcon_server_url] = res
                 except Exception as e:
@@ -266,38 +283,58 @@ class HellLetLoose(commands.Cog):
         ) as response:
             player_list = await response.json()
 
+            # Check if player count is below seeding threshold
             if len(player_list) < self.bot.config['hell_let_loose']['seeding_threshold']:
                 self.logger.debug("Server \"%s\" qualifies for seeding status at this time." % (rcon_server_url))
+
                 # Iterate through current players and accumulate their seeding time
                 for player in player_list['result']:
                     seeder_query = await HLL_Player.filter(steam_id_64__contains=player['steam_id_64'])
                     if not seeder_query:
+                        # New seeder, make a record
                         s = HLL_Player(
                                 steam_id_64=player['steam_id_64'],
                                 player_name=player['name'],
                                 discord_id=None,
-                                total_seeding_time=0.0,
-                                last_seed_check=datetime.now()
+                                seeding_time_balance=timedelta(minutes=0),
+                                total_seeding_time=timedelta(minutes=0),
+                                last_seed_check=datetime.now(),
                             )
                         await s.save()
+                    elif len(seeder_query) != 1:
+                        self.logger.error("Multiple steam64id's found for %s!" % (player['steam_id_64']))
                     else:
-                        if len(seeder_query) != 1:
-                            self.logger.fatal("Multiple steam64id's found for %s!" % (player['steam_id_64']))
-                            raise
+                        # Account for seeding time for player
                         seeder = seeder_query[0]
-                        join_threshold = datetime.now() - timedelta(minutes=SEEDING_INCREMENT_TIMER)
-                        if seeder.last_seed_check.timestamp() > join_threshold.timestamp():
-                            seeder.seeding_time_balance = seeder.seeding_time_balance + (float(SEEDING_INCREMENT_TIMER) / 100)
-                            seeder.total_seeding_time = seeder.total_seeding_time + (float(SEEDING_INCREMENT_TIMER) / 100)
-                        else:
-                            self.logger.debug(f'User {seeder.player_name} skipped due to being below join threshold.')
-
+                        additional_time = timedelta(minutes=SEEDING_INCREMENT_TIMER)
+                        old_seed_balance = seeder.seeding_time_balance
+                        seeder.seeding_time_balance += additional_time
+                        seeder.total_seeding_time += additional_time
                         seeder.last_seed_check = datetime.now()
+
                         try:
                             await seeder.save()
                             self.logger.debug("Successfully updated seeding record for \"%s\"" % (seeder.player_name))
                         except Exception as e:
                             self.logger.error("Failed updating record \"%s\" during seeding: %s" % (seeder.player_name, e))
+
+                        # Check if user has gained an hour of seeding awards.
+                        m, s = divmod(seeder.seeding_time_balance.seconds, 60)
+                        new_hourly, _ = divmod(m, 60)
+
+                        m, s = divmod(old_seed_balance.seconds, 60)
+                        old_hourly, _ = divmod(m, 60)
+
+                        if new_hourly > old_hourly:
+                            self.logger.debug(f'Player \"{seeder.player_name}/{seeder.steam_id_64}\" has gained 1 hour seeder rewards')
+                            result = await self.send_player_message(
+                                rcon_server_url,
+                                session,
+                                seeder.steam_id_64,
+                                self.bot.config['hell_let_loose']['seeder_reward_message'],
+                            )
+                            if not result:
+                                self.logger.error(f'Failed to send seeder reward message to player \"{seeder.steam_id_64}\"')
 
                     self.logger.debug("Seeder status updated for server \"%s\"" % (rcon_server_url))
             else:
@@ -363,12 +400,32 @@ class HellLetLoose(commands.Cog):
         async with session.get(
             '%s/api/get_vip_ids' % (rcon_server_url)
         ) as response:
-            res = await response.json()
-            vip_list = res['result']
+            result = await response.json()
+            vip_list = result['result']
             for vip in vip_list:
                 if int(vip['steam_id_64']) == steam_id_64:
                     return vip
         return None
+    
+    @for_single_rcon
+    async def send_player_message(self, rcon_server_url, session, steam_id_64, message):
+        """
+        Send a player a message via the RCON.
+        
+        Returns True for success, False for failure
+        """
+        async with session.get(
+            '%s/api/do_message_player' % (rcon_server_url),
+            json={
+                'steam_id_64': steam_id_64,
+                'message': message,
+            }
+        ) as response:
+            result = await response.json()
+            if result['result'] == 'SUCCESS':
+                return True
+        self.logger.error(f'Failed sending message to user {steam_id_64}: {result}')
+        return False
 
     @commands.Cog.listener()
     async def on_application_command_error(
@@ -385,12 +442,12 @@ class HellLetLoose(commands.Cog):
         pass
 
 class HLL_Player(Model):
-    steam_id_64 = fields.BigIntField()
-    player_name = fields.TextField(null=True)
-    discord_id = fields.TextField(null=True)
-    seeding_time_balance = fields.FloatField(default=0)
-    total_seeding_time = fields.FloatField(default=0)
-    last_seed_check = fields.DatetimeField()
+    steam_id_64 = fields.BigIntField(description='Steam64Id for the player')
+    player_name = fields.TextField(description='Player\'s stored name', null=True)
+    discord_id = fields.TextField(description='Discord ID for player', null=True)
+    seeding_time_balance = fields.TimeDeltaField(description='Amount of unspent seeding hours')
+    total_seeding_time = fields.TimeDeltaField(description='Total amount of time player has spent seeding')
+    last_seed_check = fields.DatetimeField(description='Last time the seeder was seen during a seed check')
 
     def __str__(self):
         if self.player_name is not None:
