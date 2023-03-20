@@ -45,7 +45,7 @@ class HellLetLoose(commands.Cog):
     @hll.command()
     async def steam64id(self, ctx: discord.ApplicationContext, steam64: Option(
             str,
-            "Your Steam ID (64 version, NOT 32 version)",
+            'Your Steam ID (64 version, NOT 32 version)',
             required=True,
         )
     ):
@@ -133,7 +133,7 @@ class HellLetLoose(commands.Cog):
     @hll.command()
     async def claim(self, ctx: discord.ApplicationContext, hours: Option(
             int,
-            "Redeem seeding hours for VIP status",
+            'Redeem seeding hours for VIP status',
             required=False,
         )
     ):
@@ -285,16 +285,19 @@ class HellLetLoose(commands.Cog):
 
             # Check if player count is below seeding threshold
             if len(player_list) < self.bot.config['hell_let_loose']['seeding_threshold']:
-                self.logger.debug("Server \"%s\" qualifies for seeding status at this time." % (rcon_server_url))
+                self.logger.debug(f'Server \"{rcon_server_url}\" qualifies for seeding status at this time.')
 
                 # Iterate through current players and accumulate their seeding time
                 for player in player_list['result']:
                     seeder_query = await HLL_Player.filter(steam_id_64__contains=player['steam_id_64'])
+                    player_name = player['name']
+                    steam_id_64 = player['steam_id_64']
                     if not seeder_query:
                         # New seeder, make a record
+                        self.logger.debug(f'Generating new seeder record for \"{player_name}/{steam_id_64}\"')
                         s = HLL_Player(
-                                steam_id_64=player['steam_id_64'],
-                                player_name=player['name'],
+                                steam_id_64=steam_id_64,
+                                player_name=player_name,
                                 discord_id=None,
                                 seeding_time_balance=timedelta(minutes=0),
                                 total_seeding_time=timedelta(minutes=0),
@@ -302,7 +305,7 @@ class HellLetLoose(commands.Cog):
                             )
                         await s.save()
                     elif len(seeder_query) != 1:
-                        self.logger.error("Multiple steam64id's found for %s!" % (player['steam_id_64']))
+                        self.logger.error(f'Multiple steam64id\'s found for \"{steam_id_64}\"!')
                     else:
                         # Account for seeding time for player
                         seeder = seeder_query[0]
@@ -314,9 +317,9 @@ class HellLetLoose(commands.Cog):
 
                         try:
                             await seeder.save()
-                            self.logger.debug("Successfully updated seeding record for \"%s\"" % (seeder.player_name))
+                            self.logger.debug(f'Successfully updated seeding record for \"{seeder.player_name}\"')
                         except Exception as e:
-                            self.logger.error("Failed updating record \"%s\" during seeding: %s" % (seeder.player_name, e))
+                            self.logger.error(f'Failed updating record \"{seeder.player_name}\" during seeding: {e}')
 
                         # Check if user has gained an hour of seeding awards.
                         m, s = divmod(seeder.seeding_time_balance.seconds, 60)
@@ -336,7 +339,7 @@ class HellLetLoose(commands.Cog):
                             if not result:
                                 self.logger.error(f'Failed to send seeder reward message to player \"{seeder.steam_id_64}\"')
 
-                    self.logger.debug("Seeder status updated for server \"%s\"" % (rcon_server_url))
+                self.logger.debug(f'Seeder status updated for server \"{rcon_server_url}\"')
             else:
                 self.logger.debug("Server %s does not qualify as seeding status at this time (player_count = %s, must be > %s).  Skipping." % (
                         rcon_server_url,
