@@ -282,7 +282,7 @@ class HellLetLoose(commands.Cog):
             player_list = await response.json()
 
             # Check if player count is below seeding threshold
-            if len(player_list) < self.bot.config['hell_let_loose']['seeding_threshold']:
+            if len(player_list['result']) < self.bot.config['hell_let_loose']['seeding_threshold']
                 self.logger.debug(f'Server \"{rcon_server_url}\" qualifies for seeding status at this time.')
 
                 # Iterate through current players and accumulate their seeding time
