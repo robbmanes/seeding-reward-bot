@@ -40,7 +40,6 @@ class HellLetLoose(commands.Cog):
         self.sessions = {}
         for rcon_server_url in self.bot.config['hell_let_loose']['rcon_url']:
             self.sessions[rcon_server_url] = aiohttp.ClientSession()
-
     
     @hll.command()
     async def steam64id(self, ctx: discord.ApplicationContext, steam64: Option(
@@ -123,8 +122,7 @@ class HellLetLoose(commands.Cog):
             await ctx.respond(f'No VIP record found for {ctx.author.mention}.')
             return  
 
-        # For some reason, the vip_expiration field drops the .f requirement in the format here.
-        expiration = datetime.strptime(vip['vip_expiration'], "%Y-%m-%dT%H:%M:%S%z")
+        expiration = convert_rcon_datetime(vip['vip_expiration'])
         if expiration.timestamp() < datetime.now().timestamp():
             await ctx.respond(f'{ctx.author.mention}: your VIP appears to have expired.')
             return
@@ -181,7 +179,7 @@ class HellLetLoose(commands.Cog):
                     if vip is None or vip['vip_expiration'] == None:
                         expiration = datetime.now() + timedelta(hours=grant_value)
                     else:
-                        expiration = datetime.strptime(vip['vip_expiration'], "%Y-%m-%dT%H:%M:%S%z") + timedelta(hours=grant_value)
+                        expiration = convert_rcon_datetime(vip['vip_expiration']) + timedelta(hours=grant_value)
 
                     # Make sure all RCON grants are successful.
                     result_dict = await self.grant_vip(player.player_name, player.steam_id_64, expiration.strftime("%Y-%m-%dT%H:%M:%S%z"))
@@ -347,7 +345,15 @@ class HellLetLoose(commands.Cog):
                         self.bot.config['hell_let_loose']['seeding_threshold'],
                     )
                 )
-    
+
+    def convert_rcon_datetime(self, date_string):
+        """Convert datetime strings from the RCON to datetime objects"""
+        try:
+            # Newer RCON entries do not have the .f field
+            return datetime.strptime(date_string, "%Y-%m-%dT%H:%M:%S%z")
+        except ValueError as e:
+            return datetime.strptime(date_string, "%Y-%m-%dT%H:%M:%S.%f%z")
+
     @for_each_rcon
     async def grant_vip(self, rcon_server_url, session, name, steam_id_64, expiration):
         """
