@@ -122,7 +122,7 @@ class HellLetLoose(commands.Cog):
             await ctx.respond(f'No VIP record found for {ctx.author.mention}.')
             return  
 
-        expiration = convert_rcon_datetime(vip['vip_expiration'])
+        expiration = self.convert_rcon_datetime(vip['vip_expiration'])
         if expiration.timestamp() < datetime.now().timestamp():
             await ctx.respond(f'{ctx.author.mention}: your VIP appears to have expired.')
             return
@@ -179,7 +179,7 @@ class HellLetLoose(commands.Cog):
                     if vip is None or vip['vip_expiration'] == None:
                         expiration = datetime.now() + timedelta(hours=grant_value)
                     else:
-                        expiration = convert_rcon_datetime(vip['vip_expiration']) + timedelta(hours=grant_value)
+                        expiration = self.convert_rcon_datetime(vip['vip_expiration']) + timedelta(hours=grant_value)
 
                     # Make sure all RCON grants are successful.
                     result_dict = await self.grant_vip(player.player_name, player.steam_id_64, expiration.strftime("%Y-%m-%dT%H:%M:%S%z"))
