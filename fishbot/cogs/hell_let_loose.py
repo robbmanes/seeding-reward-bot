@@ -216,7 +216,11 @@ class HellLetLoose(commands.Cog):
             return
 
         # Remember this queries multiple RCON's and returns multiple lists
-        per_rcon_log_list = await self.get_player_logs(player.steam_id_64)
+        log_list_dict = await self.get_player_logs(player.steam_id_64)
+        per_rcon_log_list = []
+        for key, logs in log_list_dict.items():
+            per_rcon_log_list.append(logs)
+
         player_got_killed_by = []
         player_got_tkd_by = []
 
@@ -557,7 +561,7 @@ class HellLetLoose(commands.Cog):
         try:
             parsed_logs = []
             for log in logs:
-                if log['action'] is action:
+                if log['action'] == action:
                     parsed_logs.append(log)
         except ValueError as e:
             self.logger.error(f'Failed to parse log events as action is undefined: {e}')
