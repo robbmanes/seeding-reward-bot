@@ -61,31 +61,36 @@ class HellLetLoose(commands.Cog):
             self.logger.error('Player lookup during steam64id returned multiple results:')
             await ctx.respond(f'Found multiple players with that `steam64id` - that shouldn\t happen! Please contact an administrator.')
             return
-        else len(query_result) == 0:
+        elif len(query_result) == 0:
             # No entry found, make a new one
             player = HLL_Player(
                 steam_id_64=steam_id_64,
-                player_name=player_name,
+                player_name=ctx.author.name,
                 discord_id=ctx.author.id,
                 seeding_time_balance=timedelta(minutes=0),
                 total_seeding_time=timedelta(minutes=0),
                 last_seed_check=datetime.now(),
             )
-        else:
-            player = query_result[0]
-
-        if player.discord_id is None:
-            player.discord_id = ctx.author.id
+            self.logger.debug(f'Discord user {ctx.author.name} is registering steam64id `{steam64}` to {player.discord_id}')
             await player.save()
-            self.logger.debug(f'Updated user {ctx.author.mention} with steam64id `{steam64}`')
             await ctx.respond(f'{ctx.author.mention}: I\'ve registered your `steam64id` to your Discord account. Thanks!')
             return
-        elif player.discord_id == ctx.author.id:
-            await ctx.respond(f'That `steam64id` is already registered to you!')
-            return
         else:
-            self.logger.debug(f'Discord user {ctx.author.name} attempted to register steam64id `{steam64}` but it is already owned by Discord user {player.discord_id}')
-            await ctx.respond(f'That `steam64id` is already registered to someone else.')
+            # Found one existing entry
+            player = query_result[0]
+            if player.discord_id is None:
+                player.discord_id = ctx.author.id
+                await player.save()
+                self.logger.debug(f'Updated user {ctx.author.mention} with steam64id `{steam64}`')
+                await ctx.respond(f'{ctx.author.mention}: I\'ve registered your `steam64id` to your Discord account. Thanks!')
+                return
+            elif player.discord_id == ctx.author.id:
+                await ctx.respond(f'That `steam64id` is already registered to you!')
+                return
+            else:
+                self.logger.debug(f'Discord user {ctx.author.name} attempted to register steam64id `{steam64}` but it is already owned by Discord user {player.discord_id}')
+                await ctx.respond(f'That `steam64id` is already registered to someone else.')
+                return
     
     @hll.command()
     async def seeder(self, ctx: discord.ApplicationContext):
