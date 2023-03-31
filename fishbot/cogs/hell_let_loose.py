@@ -61,9 +61,18 @@ class HellLetLoose(commands.Cog):
             self.logger.error('Player lookup during steam64id returned multiple results:')
             await ctx.respond(f'Found multiple players with that `steam64id` - that shouldn\t happen! Please contact an administrator.')
             return
-        
-        # No entry found, continue
-        player = query_result[0]
+        else len(query_result) == 0:
+            # No entry found, make a new one
+            player = HLL_Player(
+                steam_id_64=steam_id_64,
+                player_name=player_name,
+                discord_id=ctx.author.id,
+                seeding_time_balance=timedelta(minutes=0),
+                total_seeding_time=timedelta(minutes=0),
+                last_seed_check=datetime.now(),
+            )
+        else:
+            player = query_result[0]
 
         if player.discord_id is None:
             player.discord_id = ctx.author.id
