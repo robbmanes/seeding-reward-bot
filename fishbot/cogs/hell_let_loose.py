@@ -179,7 +179,12 @@ class HellLetLoose(commands.Cog):
                     if vip is None or vip['vip_expiration'] == None:
                         expiration = datetime.now() + timedelta(hours=grant_value)
                     else:
-                        expiration = self.convert_rcon_datetime(vip['vip_expiration']) + timedelta(hours=grant_value)
+                        # Check if current expiration is in the past.  If it is, set it to current time.
+                        cur_expiration = self.convert_rcon_datetime(vip['vip_expiration'])
+                        if cur_expiration.timestamp() < datetime.now().timestamp():
+                            cur_expiration = datetime.now()
+
+                        expiration = cur_expiration + timedelta(hours=grant_value)
 
                     # Make sure all RCON grants are successful.
                     result_dict = await self.grant_vip(player.player_name, player.steam_id_64, expiration.strftime("%Y-%m-%dT%H:%M:%S%z"))
