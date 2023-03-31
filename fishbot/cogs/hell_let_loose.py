@@ -26,6 +26,9 @@ class HellLetLoose(commands.Cog):
     seeding_threshold -- `int`, number of players a server must exceed to no longer count as seeding
     seeder_vip_reward_hours -- `int`, number of hours that 1 hour of seeding time grants VIP status for
     seeder_reward_message -- `str`, message given to seeders in-game when they gain rewards
+    seeding_start_time_utc -- 'str', hours:minutes in UTC time to start checking for seeders
+    seeding_end_time_utc -- 'str', hours:minutes in UTC time to stop checking for seeders
+    max_log_parse_mins -- `int`, number of minutes we query the RCON servers for logs
     ```
     """
 
@@ -98,11 +101,10 @@ class HellLetLoose(commands.Cog):
 
         await ctx.defer()
         self.logger.debug(f'VIP query for `{ctx.author.id}/{ctx.author.name}`.')
-        query_result = await HLL_Player.filter(discord_id=ctx.author.id)
-        if len(query_result) == 0:
+        player = await self.get_player_by_discord_id(ctx.author.id)
+        if player is None:
             await ctx.respond(f'Your Discord ID doesn\'t match any known `steam64id`. Use `/hll steam64id` to tie your ID to your discord.')
             return
-        player = query_result[0]
 
         # We need to ensure we get the same VIP states for both RCON's.
         vip_dict = await self.get_vip(player.steam_id_64)
@@ -145,16 +147,13 @@ class HellLetLoose(commands.Cog):
             message += f'\nℹ️ Check your seeding hours with `/hll seeder`.'
             await ctx.respond(message)
         else:
-            query_set = await HLL_Player.filter(discord_id__contains=ctx.author.id)
-            if len(query_set) == 0:
+            player = await self.get_player_by_discord_id(ctx.author.id)
+            if player is None:
                 message = f'{ctx.author.mention}: Can\'t find your ID to claim VIP.'
                 message += f'\nMake sure you have run `/hll steam64id` and registered your Steam and Discord.'
                 await ctx.respond(message)
-            elif len(query_set) != 1:
-                self.logger.fatal("Multiple discord_id's found for %s!" % (ctx.author.id))
-                await ctx.respond(f'Problem when looking up your steam/discord: multiple results found. Please ping an administrator!')
+                return
             else:
-                player = query_set[0]
                 self.logger.debug(f'User \"{ctx.author.name}/{player.steam_id_64}\" is attempting to claim {hours} seeder hours from their total of {player.seeding_time_balance}.')
                 if hours > player.seeding_time_balance.seconds // 3600:
                     await ctx.respond(f'{ctx.author.mention}: ❌ Sorry, not enough banked time to claim `{hours}` hour(s) of VIP (Currently have `{player.seeding_time_balance.seconds // 3600}` banked hours).')
@@ -204,6 +203,84 @@ class HellLetLoose(commands.Cog):
 
                 self.logger.fatal(f'Failed claiming VIP for \"{ctx.author.name}/{player.steam_id_64}\: {result}')
                 await ctx.respond(f'{ctx.author.mention}: There was a problem claiming VIP.')
+    
+    @hll.command()
+    async def who_killed_me(self, ctx: discord.ApplicationContext, ):
+        """Check who's killed you recently"""
+        await ctx.defer()
+        player = await self.get_player_by_discord_id(ctx.author.id)
+        if player is None:
+            message = f'{ctx.author.mention}: Can\'t find your steam64id by your discord ID.'
+            message += f'\nMake sure you have run `/hll steam64id` and registered your Steam and Discord.'
+            await ctx.respond(message)
+            return
+
+        # Remember this queries multiple RCON's and returns multiple lists
+        per_rcon_log_list = await self.get_player_logs(player.steam_id_64)
+        player_got_killed_by = []
+        player_got_tkd_by = []
+
+        for logs in per_rcon_log_list:
+            kills = self.parse_log_events(logs, 'KILL')
+            for kill in kills:
+                if kill['steam_id_64_2'] == player.steam_id_64:
+                    player_got_killed_by.append(kill)
+            
+            tks = self.parse_log_events(logs, 'TEAM KILL')
+            for tk in tks:
+                if tk['steam_id_64_2'] == player.steam_id_64:
+                    player_got_tkd_by.append(kill)
+        
+        # Make sure we have anything to report and sort the lists by recent
+        if len(player_got_killed_by) != 0:
+            sorted(player_got_killed_by, key=lambda d: d['timestamp_ms'], reverse=True)
+        else:
+            player_got_killed_by = None
+
+        if len(player_got_tkd_by) != 0:
+            sorted(player_got_tkd_by, key=lambda d: d['timestamp_ms'], reverse=True)
+        else:
+            player_got_tkd_by = None
+
+        # Build a report for the caller
+        message = f'{ctx.author.mention}:'
+
+        if player_got_killed_by is not None:
+            message += f'\n💀 Here are the last 10 enemy players to kill you...'
+            for _ in range(10):
+                for kill in player_got_killed_by:
+                    killer = kill['player']
+                    weapon = kill['weapon']
+                    message += f'\n\t☠️ `{killer}` with (a) `{weapon}`'
+        else:
+            message += f'\n😇You haven\'t been killed by enemy players recently!'
+        
+        if player_got_tkd_by is not None:
+            message += f'\n😞 Here are the last 10 friendly players who TK\'d you...'
+            for _ in range(10):
+                for kill in player_got_tkd_by:
+                    killer = kill['player']
+                    weapon = kill['weapon']
+                    message += f'\n\t☠️ `{killer}` with (a) `{weapon}`'
+        else:
+            message += f'\n🥰 You have careful teammates, and haven\'t been TK\'d recently!'
+        
+        await ctx.respond(message)
+        return
+
+    async def get_player_by_discord_id(self, id):
+        """
+        Performs a lookup for a user based on their steam_64_id <=> discord_id.
+        If no result, None is returned indicating the user has no entry or hasn't registered.
+        """
+        query_set = await HLL_Player.filter(discord_id__contains=id)
+        if len(query_set) == 0:
+            return None
+        elif len(query_set) != 1:
+            self.logger.fatal("Multiple discord_id's found for %s!" % (id))
+            raise
+        else:
+            return query_set[0]
 
     def for_single_rcon(fn):
         """
@@ -450,6 +527,43 @@ class HellLetLoose(commands.Cog):
                     return vip
         return None
     
+    @for_each_rcon
+    async def get_player_logs(self, rcon_server_url, session, steam_id_64):
+        """
+        Queries the RCON server for the last logs for a user by their steam_id_64.
+        Returns raw logs in a list.
+        """
+        async with session.get(
+            '%s/api/get_structured_logs' % (rcon_server_url),
+            json={
+                'since_min_ago': self.bot.config['hell_let_loose']['max_log_parse_mins']
+            }
+        ) as response:
+            # We have to assume the player name can change, so ensure we only search for steamID's
+            unfiltered_logs = response.json()['result']['logs']
+            player_logs = []
+            for log in unfiltered_logs:
+                if log['steam_id_64_1'] == steam_id_64 or log['steam_id_64_2'] == steam_id_64:
+                    player_logs.append(log)
+            
+            return player_logs
+    
+    def parse_log_events(self, logs, action):
+        """
+        Takes a list of logs from get_player_logs and returns a list of logs of type ACTION.
+        Actions can be any supported RCON type from game logs:
+        https://github.com/MarechJ/hll_rcon_tool/blob/5cba530ceadd226a80fc345e3607eff7ce4011e1/rcon/game_logs.py#L29-L55
+        """
+        try:
+            parsed_logs = []
+            for log in logs:
+                if log['action'] is action:
+                    parsed_logs.append(log)
+        except ValueError as e:
+            self.logger.error(f'Failed to parse log events as action is undefined: {e}')
+        
+        return parsed_logs
+
     @for_single_rcon
     async def send_player_message(self, rcon_server_url, session, steam_id_64, message):
         """
