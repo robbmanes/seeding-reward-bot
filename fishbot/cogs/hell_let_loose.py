@@ -540,7 +540,7 @@ class HellLetLoose(commands.Cog):
             }
         ) as response:
             # We have to assume the player name can change, so ensure we only search for steamID's
-            unfiltered_logs = response.json()['result']['logs']
+            unfiltered_logs = await response.json()['result']['logs']
             player_logs = []
             for log in unfiltered_logs:
                 if log['steam_id_64_1'] == steam_id_64 or log['steam_id_64_2'] == steam_id_64:
