@@ -17,3 +17,5 @@ rcon_password = "rcon_password"
 seeding_threshold = 40
 seeder_vip_reward_hours = 1
 seeder_reward_message = "You've earned 1 hour of VIP for seeding!"
+seeding_start_time_utc = "11:00"
+seeding_end_time_utc = "20:00"

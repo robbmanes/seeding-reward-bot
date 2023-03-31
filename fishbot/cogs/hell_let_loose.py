@@ -1,5 +1,5 @@
 import aiohttp
-from datetime import datetime, timedelta
+from datetime import datetime, time, timedelta, timezone
 import discord
 from discord.commands import Option
 from discord.commands import SlashCommandGroup
@@ -281,6 +281,35 @@ class HellLetLoose(commands.Cog):
         Accumulate total "seeding" time for users including "unspent" seeding time to be used
         for rewards to those who seed.
         """
+        # Ensure that we are during active seeding hours, if set.
+        try:
+            seeding_start_time_str = self.bot.config['hell_let_loose']['seeding_start_time_utc']
+            seeding_end_time_str = self.bot.config['hell_let_loose']['seeding_end_time_utc']
+
+            seeding_start_time = time.fromisoformat(seeding_start_time_str)
+            seeding_end_time = time.fromisoformat(seeding_end_time_str)
+
+            time_now = datetime.now(timezone.utc).time()
+
+            # https://stackoverflow.com/questions/20518122/python-working-out-if-time-now-is-between-two-times
+            def is_now(start, end, now):
+                if start <= end:
+                    return start <= now <= end
+                else:
+                    return start <= now or now < end
+
+            if not is_now(seeding_start_time, seeding_end_time, time_now):
+                self.logger.debug(f'Not within seeding time range of \"{seeding_start_time_str} - {seeding_end_time_str}\" UTC')
+                return
+
+        except ValueError as e:
+            # If we excepted here, then the string is incorrect in fromisoformat (or something worse!)
+            self.logger.error(f'Can\'t set seeding hours: {e}')
+            pass
+        except TypeError as e:
+            # If we excepted here, then seeding times are undefined, carry on
+            pass
+
         async with session.get(
             '%s/api/get_players' % (rcon_server_url)
         ) as response:
