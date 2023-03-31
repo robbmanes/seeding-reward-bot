@@ -54,15 +54,15 @@ class HellLetLoose(commands.Cog):
         """Register your discord account to your steam64Id"""
 
         await ctx.defer()
+
+        # See if the user already has an entry
         query_result = await HLL_Player.filter(steam_id_64=steam64)
-        if len(query_result) == 0:
-            await ctx.respond(f'I can\'t find a record of your `steam64id`, have you played on our Hell Let Loose servers yet?')
-            return
-        elif len(query_result) != 1:
+        if len(query_result) != 1:
             self.logger.error('Player lookup during steam64id returned multiple results:')
             await ctx.respond(f'Found multiple players with that `steam64id` - that shouldn\t happen! Please contact an administrator.')
             return
         
+        # No entry found, continue
         player = query_result[0]
 
         if player.discord_id is None:
