@@ -1,36 +1,19 @@
 import aiohttp
 from datetime import datetime, time, timedelta, timezone
+from glowbot.db import HLL_Player
 import discord
 from discord.commands import Option
 from discord.commands import SlashCommandGroup
 from discord.ext import commands, tasks
 from glowbot.config import global_config
 import logging
-from tortoise.models import Model
-from tortoise import fields
+
 
 SEEDING_INCREMENT_TIMER = 3 # Minutes - how often the RCON is queried for seeding checks
 
-class HellLetLoose(commands.Cog):
+class BotCommands(commands.Cog):
     """
-    Hell Let Loose Discord.Cog for glowbot.
-
-    Cog to manage game interactions with Hell Let Loose via the API's
-    available from [Hell Let Loose Community RCON](https://github.com/MarechJ/hll_rcon_tool).
-
-    Configuration options in glowbot's config.toml:
-    ```
-    [hell_let_loose]
-    rcon_url -- `list`, HTTP/S RCON server URLs
-    rcon_user -- `str`, username for login to RCON
-    rcon_password -- `str`, password for login to RCON
-    seeding_threshold -- `int`, number of players a server must exceed to no longer count as seeding
-    seeder_vip_reward_hours -- `int`, number of hours that 1 hour of seeding time grants VIP status for
-    seeder_reward_message -- `str`, message given to seeders in-game when they gain rewards
-    seeding_start_time_utc -- 'str', hours:minutes in UTC time to start checking for seeders
-    seeding_end_time_utc -- 'str', hours:minutes in UTC time to stop checking for seeders
-    max_log_parse_mins -- `int`, number of minutes we query the RCON servers for logs
-    ```
+    Cog to manage discord interactions.
     """
 
     hll = SlashCommandGroup('hll')
@@ -617,22 +600,8 @@ class HellLetLoose(commands.Cog):
     def cog_unload(self):
         pass
 
-class HLL_Player(Model):
-    steam_id_64 = fields.BigIntField(description='Steam64Id for the player')
-    player_name = fields.TextField(description='Player\'s stored name', null=True)
-    discord_id = fields.TextField(description='Discord ID for player', null=True)
-    seeding_time_balance = fields.TimeDeltaField(description='Amount of unspent seeding hours')
-    total_seeding_time = fields.TimeDeltaField(description='Total amount of time player has spent seeding')
-    last_seed_check = fields.DatetimeField(description='Last time the seeder was seen during a seed check')
-
-    def __str__(self):
-        if self.player_name is not None:
-            return self.player_name
-        else:
-            return self.steam_id_64
-
 def setup(bot):
-    bot.add_cog(HellLetLoose(bot))
+    bot.add_cog(BotCommands(bot))
 
 def teardown(bot):
     pass

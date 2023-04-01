@@ -24,17 +24,14 @@ def run_discord_bot():
     if env_token is not None:
         global_config['discord']['discord_token'] = env_token
 
+    # Initialize database
+    db = GlowDatabase(asyncio.get_event_loop())
+
     # Create a discord bot
     bot = commands.Bot(command_prefix='!')
 
     # Load the bot extension
-    bot.load_extension('glowbot.hell_let_loose')
-
-    # Load in the event loop for the database initialization
-    loop = asyncio.get_event_loop()
-    db = GlowDatabase(loop)
-    bot.db = db
-    bot.loop = loop
+    bot.load_extension('glowbot.commands')
 
     # Actually run the bot.
     logger.info("Starting discord services...")

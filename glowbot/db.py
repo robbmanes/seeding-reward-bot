@@ -1,6 +1,7 @@
 from glowbot.config import global_config
 import logging
-from tortoise import Tortoise
+from tortoise import Tortoise, fields
+from tortoise.models import Model
 
 class GlowDatabase(Tortoise):
     """
@@ -8,7 +9,7 @@ class GlowDatabase(Tortoise):
     Only supports postgresql, and self-generates configuration and initialization.
     """
 
-    models = ['aerich.models', 'glowbot.hell_let_loose']
+    models = ['aerich.models', 'glowbot.db']
 
     def __init__(self, event_loop):
         super().__init__()
@@ -43,3 +44,20 @@ class GlowDatabase(Tortoise):
         }
 
         return db_config
+
+class HLL_Player(Model):
+    """
+    Model representing a player <=> discord relationship.
+    """
+    steam_id_64 = fields.BigIntField(description='Steam64Id for the player')
+    player_name = fields.TextField(description='Player\'s stored name', null=True)
+    discord_id = fields.TextField(description='Discord ID for player', null=True)
+    seeding_time_balance = fields.TimeDeltaField(description='Amount of unspent seeding hours')
+    total_seeding_time = fields.TimeDeltaField(description='Total amount of time player has spent seeding')
+    last_seed_check = fields.DatetimeField(description='Last time the seeder was seen during a seed check')
+
+    def __str__(self):
+        if self.player_name is not None:
+            return self.player_name
+        else:
+            return self.steam_id_64
