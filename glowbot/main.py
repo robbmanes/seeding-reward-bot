@@ -24,7 +24,7 @@ def run_discord_bot():
     if env_token is not None:
         global_config['discord']['discord_token'] = env_token
 
-    # Discord bot logic
+    # Create a discord bot
     bot = commands.Bot(command_prefix='!')
 
     # Load the bot extension
@@ -45,4 +45,4 @@ def run_discord_bot():
         traceback.print_exc()
 
 if __name__ == '__main__':
-    run_discord_bot()
+    sys.exit(0)

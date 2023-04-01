@@ -17,7 +17,7 @@ aerich = "^0.7.1"
 pytest = "^5.2"
 
 [tool.poetry.scripts]
-glowbot-discord = "glowbot.discord_bot:run_discord_bot"
+glowbot-discord = "glowbot.main:run_discord_bot"
 
 [build-system]
 requires = [
