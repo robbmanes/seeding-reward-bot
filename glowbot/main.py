@@ -1,6 +1,7 @@
 import asyncio
 from glowbot.config import global_config
 from glowbot.db import GlowDatabase
+from glowbot.hll_rcon_client import HLL_RCON_Client
 import discord
 from discord.ext import commands
 import logging
@@ -24,17 +25,18 @@ def run_discord_bot():
     if env_token is not None:
         global_config['discord']['discord_token'] = env_token
 
-    # Discord bot logic
+    # Initialize database
+    db = GlowDatabase(asyncio.get_event_loop())
+
+    # Create a discord bot
     bot = commands.Bot(command_prefix='!')
 
-    # Load the bot extension
-    bot.load_extension('glowbot.hell_let_loose')
+    # Provide the discord bot with an RCON client:
+    bot.client = HLL_RCON_Client()
 
-    # Load in the event loop for the database initialization
-    loop = asyncio.get_event_loop()
-    db = GlowDatabase(loop)
-    bot.db = db
-    bot.loop = loop
+    # Load the bot extension
+    bot.load_extension('glowbot.commands')
+    bot.load_extension('glowbot.tasks')
 
     # Actually run the bot.
     logger.info("Starting discord services...")
@@ -45,4 +47,4 @@ def run_discord_bot():
         traceback.print_exc()
 
 if __name__ == '__main__':
-    run_discord_bot()
+    sys.exit(0)
