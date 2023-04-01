@@ -15,23 +15,13 @@ class DiscordBot(commands.Bot):
     Primary class representing a single discord bot belonging to a single server.
     """
 
-    models = ['aerich.models']
-    cogs = []
+    models = ['aerich.models', 'glowbot.hell_let_loose']
 
     def __init__(self, command_prefix):
         intents = discord.Intents.all()
         super().__init__(command_prefix, intents=intents)
 
         self.logger = logging.getLogger(__package__)
-    
-    async def load_extensions(self):
-        for cog in self.cogs:
-            try:
-                self.load_extension(cog)
-                self.logger.info("Loaded cog \"%s\" successfully." % cog)
-            except Exception as e:
-                self.logger.error("Failed to load cog '%s': %s" % (cog, e))
-                traceback.print_exc()
     
     async def init_db(self):
         """ Detect the type of database and attempt to initialize it with schemas. """
@@ -91,12 +81,6 @@ class DiscordBot(commands.Bot):
     def load_config(self, config):
         self.config = config
 
-        # Load a cog list for loading and db init
-        for cog in self.config['discord']['discord_cogs']:
-            cog_path = 'glowbot.cogs.%s' % (cog)
-            self.cogs.append(cog_path)
-            self.models.append(cog_path)
-
     async def init_bot(self):
         """
         Entrypoint in the class to run the Discord bot.
@@ -105,9 +89,9 @@ class DiscordBot(commands.Bot):
         # Load cogs first, THEN database, to prevent wiping Meta from Models
         self.logger.info("Loading discord cog extensions...")
         try:
-           await self.load_extensions()
+           await self.load_extension('glowbot.hell_let_loose')
         except Exception as e:
-            self.logger.fatal("Failed to load cogs: %s" % (e))
+            self.logger.fatal("Failed to load cog: %s" % (e))
             traceback.print_exc()
 
         self.logger.info("Performing database initialization for cogs...")
