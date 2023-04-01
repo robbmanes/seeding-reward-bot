@@ -3,12 +3,13 @@ log_level = "DEBUG"
 
 [discord]
 discord_token = "DISCORD_TOKEN"
-discord_cogs = [
-    "ping",
-]
 
-[database.sqlite]
-db_file = "glowbot.db"
+[database.postgres]
+db_user = "glowbot"
+db_password = "glowbot"
+db_url = "localhost"
+db_port = 5432
+db_name = "glowbot"
 
 [hell_let_loose]
 rcon_url = ["https://rcon_server_1.com:8080", "https://rcon_server_2.com:8081"]

@@ -4,6 +4,7 @@ import discord
 from discord.commands import Option
 from discord.commands import SlashCommandGroup
 from discord.ext import commands, tasks
+from glowbot.config import global_config
 import logging
 from tortoise.models import Model
 from tortoise import fields
@@ -41,7 +42,7 @@ class HellLetLoose(commands.Cog):
 
         # Open an aiohttp session per RCON endpoint
         self.sessions = {}
-        for rcon_server_url in self.bot.config['hell_let_loose']['rcon_url']:
+        for rcon_server_url in global_config['hell_let_loose']['rcon_url']:
             self.sessions[rcon_server_url] = aiohttp.ClientSession()
     
     @hll.command()
@@ -154,7 +155,7 @@ class HellLetLoose(commands.Cog):
         """Redeem seeding hours for VIP status"""
         await ctx.defer()
         if hours is None:
-            vip_value = self.bot.config['hell_let_loose']['seeder_vip_reward_hours']
+            vip_value = global_config['hell_let_loose']['seeder_vip_reward_hours']
             message = f'{ctx.author.mention}:'
             message += f'\n💵 Use `/hll claim $HOURS` to turn seeding hours into VIP status.'
             message += f'\n🚜 One hour of seeding time is `{vip_value}` hour(s) of VIP status.'
@@ -188,7 +189,7 @@ class HellLetLoose(commands.Cog):
                     # All is well, return to the (identical) first in the list
                     vip = vip_entries.pop()
                     
-                    grant_value = self.bot.config['hell_let_loose']['seeder_vip_reward_hours'] * hours
+                    grant_value = global_config['hell_let_loose']['seeder_vip_reward_hours'] * hours
                     if vip is None or vip['vip_expiration'] == None:
                         expiration = datetime.now() + timedelta(hours=grant_value)
                     else:
@@ -357,15 +358,15 @@ class HellLetLoose(commands.Cog):
                 async with session.post(
                     '%s/api/login' % (rcon_server_url),
                     json={
-                        'username': self.bot.config['hell_let_loose']['rcon_user'],
-                        'password': self.bot.config['hell_let_loose']['rcon_password'],
+                        'username': global_config['hell_let_loose']['rcon_user'],
+                        'password': global_config['hell_let_loose']['rcon_password'],
                     },
                 ) as response:
                     r = await response.json()
                     if r['failed'] is False:
-                        self.bot.logger.info(f'Successful RCON login to {rcon_server_url}')
+                        self.logger.info(f'Successful RCON login to {rcon_server_url}')
                     else:
-                        self.bot.logger.error(f'Failed to log into {rcon_server_url}: \"{r}\"')
+                        self.logger.error(f'Failed to log into {rcon_server_url}: \"{r}\"')
 
     @tasks.loop(minutes=SEEDING_INCREMENT_TIMER)
     @for_each_rcon
@@ -378,8 +379,8 @@ class HellLetLoose(commands.Cog):
         """
         # Ensure that we are during active seeding hours, if set.
         try:
-            seeding_start_time_str = self.bot.config['hell_let_loose']['seeding_start_time_utc']
-            seeding_end_time_str = self.bot.config['hell_let_loose']['seeding_end_time_utc']
+            seeding_start_time_str = global_config['hell_let_loose']['seeding_start_time_utc']
+            seeding_end_time_str = global_config['hell_let_loose']['seeding_end_time_utc']
 
             seeding_start_time = time.fromisoformat(seeding_start_time_str)
             seeding_end_time = time.fromisoformat(seeding_end_time_str)
@@ -411,7 +412,7 @@ class HellLetLoose(commands.Cog):
             player_list = await response.json()
 
             # Check if player count is below seeding threshold
-            if len(player_list['result']) < self.bot.config['hell_let_loose']['seeding_threshold']:
+            if len(player_list['result']) < global_config['hell_let_loose']['seeding_threshold']:
                 self.logger.debug(f'Server \"{rcon_server_url}\" qualifies for seeding status at this time.')
 
                 # Iterate through current players and accumulate their seeding time
@@ -461,7 +462,7 @@ class HellLetLoose(commands.Cog):
                                 rcon_server_url,
                                 session,
                                 seeder.steam_id_64,
-                                self.bot.config['hell_let_loose']['seeder_reward_message'],
+                                global_config['hell_let_loose']['seeder_reward_message'],
                             )
                             if not result:
                                 self.logger.error(f'Failed to send seeder reward message to player \"{seeder.steam_id_64}\"')
@@ -471,7 +472,7 @@ class HellLetLoose(commands.Cog):
                 self.logger.debug("Server %s does not qualify as seeding status at this time (player_count = %s, must be > %s).  Skipping." % (
                         rcon_server_url,
                         len(player_list['result']),
-                        self.bot.config['hell_let_loose']['seeding_threshold'],
+                        global_config['hell_let_loose']['seeding_threshold'],
                     )
                 )
 
@@ -554,7 +555,7 @@ class HellLetLoose(commands.Cog):
         async with session.get(
             '%s/api/get_structured_logs' % (rcon_server_url),
             json={
-                'since_min_ago': self.bot.config['hell_let_loose']['max_log_parse_mins']
+                'since_min_ago': global_config['hell_let_loose']['max_log_parse_mins']
             }
         ) as response:
             # We have to assume the player name can change, so ensure we only search for steamID's
