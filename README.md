@@ -1,8 +1,7 @@
-# fishbot
-Community Discord Bot.
+# glowbot
+Glow's Hell Let Loose Community Discord Bot.
 
 Proudly used in:
-- [Tuna's Market](https://discord.gg/Hh5HcSJENc)
 - [Glow's Battlegrounds Community](https://discord.gg/glows).
 
 ## Setup
@@ -19,7 +18,7 @@ This bot requires all three privileged intents currently:
 Currently *all* permissions are required via the "Administer" permissions with the intent to limit this to a reasonable subset when minimum-product-viability is available.
 
 ## Development
-This section details how to set up a development environment for `fishbot`.
+This section details how to set up a development environment for `glowbot`.
 
 ### Install Poetry
 Building and Development is done with [poetry](https://python-poetry.org/docs/).  Ensure you have install poetry on your local system prior to beginning development:
@@ -37,7 +36,7 @@ $ poetry env info
 Virtualenv
 Python:         3.10.6
 Implementation: CPython
-Path:           /home/rmanes/.cache/pypoetry/virtualenvs/fishbot1-tut94FM2-py3.10
+Path:           /home/rmanes/.cache/pypoetry/virtualenvs/glowbot1-tut94FM2-py3.10
 Valid:          True
 
 System
@@ -73,10 +72,10 @@ Only *one* type of database can be configured at a time.  If both are present in
 This configuration is very easy and requires little to no configuration.  Simply add the following to your `config.toml` (which is in the default `toml` file already):
 ```toml
 [database.sqlite]
-db_file = "fishbot.db"
+db_file = "glowbot.db"
 ```
 
-This will create an SQLite database file at the root of the `fishbot` project.
+This will create an SQLite database file at the root of the `glowbot` project.
 
 ### PostgeSQL configuration.
 Postgres requires the following configuration defined in the `config.toml` to function:
@@ -91,8 +90,8 @@ db_name = "mydb"
 
 The above example will equate to a connection string of `postgres://myuser:mypassword/localhost:5432/mydb` to connect to an existing PostgreSQL instance.
 
-### Running fishbot-discord
-Assuming you have the proper virtual environment configured and currently active, use `poetry` to run `fishbot` like so:
+### Running glowbot-discord
+Assuming you have the proper virtual environment configured and currently active, use `poetry` to run `glowbot` like so:
 ```shell
-$ poetry run fishbot-discord
+$ poetry run glowbot-discord
 ```

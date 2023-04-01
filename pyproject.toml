@@ -1,7 +1,7 @@
 [tool.poetry]
-name = "fishbot"
+name = "glowbot"
 version = "0.1.0"
-description = "Fishy Community Discord Bot"
+description = "Glow's Hell Let Loose Discord Bot"
 authors = ["Robb Manes <robbmanes@protonmail.com>"]
 
 [tool.poetry.dependencies]
@@ -17,7 +17,7 @@ aerich = "^0.7.1"
 pytest = "^5.2"
 
 [tool.poetry.scripts]
-fishbot-discord = "fishbot.discord_bot:run_discord_bot"
+glowbot-discord = "glowbot.discord_bot:run_discord_bot"
 
 [build-system]
 requires = [

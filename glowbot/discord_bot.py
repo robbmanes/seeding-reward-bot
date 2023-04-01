@@ -52,7 +52,7 @@ class DiscordBot(commands.Bot):
                     'default': 'sqlite://%s' % (self.config['database']['sqlite']['db_file'])
                 },
                 'apps': {
-                    'fishbot': {
+                    'glowbot': {
                         'models': self.models,
                     },
                 },
@@ -72,7 +72,7 @@ class DiscordBot(commands.Bot):
                     },
                 },
                 'apps': {
-                    'fishbot': {
+                    'glowbot': {
                         'models': self.models,
                         'default_connection': 'default',
                     },
@@ -93,7 +93,7 @@ class DiscordBot(commands.Bot):
 
         # Load a cog list for loading and db init
         for cog in self.config['discord']['discord_cogs']:
-            cog_path = 'fishbot.cogs.%s' % (cog)
+            cog_path = 'glowbot.cogs.%s' % (cog)
             self.cogs.append(cog_path)
             self.models.append(cog_path)
 
@@ -130,7 +130,7 @@ def run_discord_bot():
     
     # Set logging level
     logger = logging.getLogger(__package__)
-    match config.settings['fishbot']['log_level']:
+    match config.settings['glowbot']['log_level']:
         case 'INFO':
             logger.setLevel(logging.INFO)
         case 'DEBUG':

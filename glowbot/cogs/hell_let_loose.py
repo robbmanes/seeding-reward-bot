@@ -12,12 +12,12 @@ SEEDING_INCREMENT_TIMER = 3 # Minutes - how often the RCON is queried for seedin
 
 class HellLetLoose(commands.Cog):
     """
-    Hell Let Loose Discord.Cog for fishbot.
+    Hell Let Loose Discord.Cog for glowbot.
 
     Cog to manage game interactions with Hell Let Loose via the API's
     available from [Hell Let Loose Community RCON](https://github.com/MarechJ/hll_rcon_tool).
 
-    Configuration options in fishbot's config.toml:
+    Configuration options in glowbot's config.toml:
     ```
     [hell_let_loose]
     rcon_url -- `list`, HTTP/S RCON server URLs
