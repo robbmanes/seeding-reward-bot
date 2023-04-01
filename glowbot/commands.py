@@ -1,15 +1,12 @@
-import aiohttp
 from datetime import datetime, time, timedelta, timezone
-from glowbot.db import HLL_Player
 import discord
 from discord.commands import Option
 from discord.commands import SlashCommandGroup
 from discord.ext import commands, tasks
 from glowbot.config import global_config
+from glowbot.db import HLL_Player, get_player_by_discord_id
+from glowbot.hll_rcon_client import HLL_RCON_Client, rcon_time_str_to_datetime
 import logging
-
-
-SEEDING_INCREMENT_TIMER = 3 # Minutes - how often the RCON is queried for seeding checks
 
 class BotCommands(commands.Cog):
     """
@@ -20,13 +17,8 @@ class BotCommands(commands.Cog):
 
     def __init__(self, bot):
         self.bot = bot
+        self.client = bot.client
         self.logger = logging.getLogger(__name__)
-        self.update_seeders.start()
-
-        # Open an aiohttp session per RCON endpoint
-        self.sessions = {}
-        for rcon_server_url in global_config['hell_let_loose']['rcon_url']:
-            self.sessions[rcon_server_url] = aiohttp.ClientSession()
     
     @hll.command()
     async def steam64id(self, ctx: discord.ApplicationContext, steam64: Option(
@@ -99,13 +91,13 @@ class BotCommands(commands.Cog):
 
         await ctx.defer()
         self.logger.debug(f'VIP query for `{ctx.author.id}/{ctx.author.name}`.')
-        player = await self.get_player_by_discord_id(ctx.author.id)
+        player = await get_player_by_discord_id(ctx.author.id)
         if player is None:
             await ctx.respond(f'Your Discord ID doesn\'t match any known `steam64id`. Use `/hll steam64id` to tie your ID to your discord.')
             return
 
         # We need to ensure we get the same VIP states for both RCON's.
-        vip_dict = await self.get_vip(player.steam_id_64)
+        vip_dict = await self.client.get_vip(player.steam_id_64)
         vip_entries = []
         for key, vip in vip_dict.items():
             vip_entries.append(vip)
@@ -122,7 +114,7 @@ class BotCommands(commands.Cog):
             await ctx.respond(f'No VIP record found for {ctx.author.mention}.')
             return  
 
-        expiration = self.convert_rcon_datetime(vip['vip_expiration'])
+        expiration = rcon_time_str_to_datetime(vip['vip_expiration'])
         if expiration.timestamp() < datetime.now().timestamp():
             await ctx.respond(f'{ctx.author.mention}: your VIP appears to have expired.')
             return
@@ -145,7 +137,7 @@ class BotCommands(commands.Cog):
             message += f'\nℹ️ Check your seeding hours with `/hll seeder`.'
             await ctx.respond(message)
         else:
-            player = await self.get_player_by_discord_id(ctx.author.id)
+            player = await get_player_by_discord_id(ctx.author.id)
             if player is None:
                 message = f'{ctx.author.mention}: Can\'t find your ID to claim VIP.'
                 message += f'\nMake sure you have run `/hll steam64id` and registered your Steam and Discord.'
@@ -160,7 +152,7 @@ class BotCommands(commands.Cog):
                     player.seeding_time_balance -= timedelta(hours=hours)
 
                     # Check the previous VIP values from both RCON's to ensure they are identical prior to proceeding
-                    vip_dict = await self.get_vip(player.steam_id_64)
+                    vip_dict = await self.client.get_vip(player.steam_id_64)
                     vip_entries = []
                     for key, vip in vip_dict.items():
                         vip_entries.append(vip)
@@ -177,14 +169,14 @@ class BotCommands(commands.Cog):
                         expiration = datetime.now() + timedelta(hours=grant_value)
                     else:
                         # Check if current expiration is in the past.  If it is, set it to current time.
-                        cur_expiration = self.convert_rcon_datetime(vip['vip_expiration'])
+                        cur_expiration = rcon_time_str_to_datetime(vip['vip_expiration'])
                         if cur_expiration.timestamp() < datetime.now().timestamp():
                             cur_expiration = datetime.now()
 
                         expiration = cur_expiration + timedelta(hours=grant_value)
 
                     # Make sure all RCON grants are successful.
-                    result_dict = await self.grant_vip(player.player_name, player.steam_id_64, expiration.strftime("%Y-%m-%dT%H:%M:%S%z"))
+                    result_dict = await self.client.grant_vip(player.player_name, player.steam_id_64, expiration.strftime("%Y-%m-%dT%H:%M:%S%z"))
                     for rcon, result in result_dict.items():
                         if result is False:
                             self.logger.error(f'Problem assigning VIP in `claim` for \"{rcon}\": {result}')
@@ -206,7 +198,7 @@ class BotCommands(commands.Cog):
     async def who_killed_me(self, ctx: discord.ApplicationContext, ):
         """Check who's killed you recently"""
         await ctx.defer()
-        player = await self.get_player_by_discord_id(ctx.author.id)
+        player = await get_player_by_discord_id(ctx.author.id)
         if player is None:
             message = f'{ctx.author.mention}: Can\'t find your steam64id by your discord ID.'
             message += f'\nMake sure you have run `/hll steam64id` and registered your Steam and Discord.'
@@ -214,7 +206,7 @@ class BotCommands(commands.Cog):
             return
 
         # Remember this queries multiple RCON's and returns multiple lists
-        log_list_dict = await self.get_player_logs(player.steam_id_64)
+        log_list_dict = await self.client.get_player_logs(player.steam_id_64)
         per_rcon_log_list = []
         for key, logs in log_list_dict.items():
             per_rcon_log_list.append(logs)
@@ -223,12 +215,12 @@ class BotCommands(commands.Cog):
         player_got_tkd_by = []
 
         for logs in per_rcon_log_list:
-            kills = self.parse_log_events(logs, 'KILL')
+            kills = self.client.parse_log_events(logs, 'KILL')
             for kill in kills:
                 if kill['steam_id_64_2'] == player.steam_id_64:
                     player_got_killed_by.append(kill)
             
-            tks = self.parse_log_events(logs, 'TEAM KILL')
+            tks = self.client.parse_log_events(logs, 'TEAM KILL')
             for tk in tks:
                 if tk['steam_id_64_2'] == player.steam_id_64:
                     player_got_tkd_by.append(kill)
@@ -269,322 +261,6 @@ class BotCommands(commands.Cog):
         
         await ctx.respond(message)
         return
-
-    async def get_player_by_discord_id(self, id):
-        """
-        Performs a lookup for a user based on their steam_64_id <=> discord_id.
-        If no result, None is returned indicating the user has no entry or hasn't registered.
-        """
-        query_set = await HLL_Player.filter(discord_id__contains=id)
-        if len(query_set) == 0:
-            return None
-        elif len(query_set) != 1:
-            self.logger.fatal("Multiple discord_id's found for %s!" % (id))
-            raise
-        else:
-            return query_set[0]
-
-    def for_single_rcon(fn):
-        """
-        Decorator to apply method to only ever work on a singe RCON server,
-        like sending a player a message (since they can't be logged in to two
-        HLL instances at once).
-
-        This decorator handles auth to the RCON for the session.
-        """
-        async def wrapper(self, rcon_server_url, session, *args):
-            res = await self.handle_rcon_auth(rcon_server_url, session)
-            self.logger.debug(f'Executing \"{fn.__name__}\" with RCON \"{rcon_server_url}\" as an endpoint...')
-            res = await fn(self, rcon_server_url, session, *args)
-            return res
-        return wrapper
-
-    def for_each_rcon(fn):
-        """
-        Decorator to apply method to all RCON servers in a list.
-        Will iterate through all RCON servers in a list, meaning it calls it's wrapped
-        function multiple times (once per server).
-
-        This decorator additionally handles auth to the RCON's.
-
-        Methods that call methods wrapped in this decorator should *always* expect a dict reply where the key of the
-        dict is the RCON URL and the value is the return of the function.
-
-        Ideally this method is adapted later to handle comparison of the values from different RCON's via a standard reply
-        but for now the caller has to evaluate the returned dict themselves.
-        """
-        async def wrapper(self, *args):
-            ret_vals = {}
-            for rcon_server_url, session in self.sessions.items():
-                res = await self.handle_rcon_auth(rcon_server_url, session)
-                try:
-                    self.logger.debug(f'Executing \"{fn.__name__}\" with RCON \"{rcon_server_url}\" as an endpoint...')
-                    res = await fn(self, rcon_server_url, session, *args)
-                    ret_vals[rcon_server_url] = res
-                except Exception as e:
-                    raise
-                # We need to check if the return value is identical for each RCON.
-                # If it is not, error/alert to avoid deviant behavior.
-                
-            return ret_vals
-        return wrapper
-
-    async def handle_rcon_auth(self, rcon_server_url, session):
-        """
-        Takes a session and checks authentication to an endpoint.
-        """
-        async with session.get(
-            '%s/api/is_logged_in' % (rcon_server_url)
-        ) as response:
-            r = await response.json()
-            if r['result']['authenticated'] == False:
-                async with session.post(
-                    '%s/api/login' % (rcon_server_url),
-                    json={
-                        'username': global_config['hell_let_loose']['rcon_user'],
-                        'password': global_config['hell_let_loose']['rcon_password'],
-                    },
-                ) as response:
-                    r = await response.json()
-                    if r['failed'] is False:
-                        self.logger.info(f'Successful RCON login to {rcon_server_url}')
-                    else:
-                        self.logger.error(f'Failed to log into {rcon_server_url}: \"{r}\"')
-
-    @tasks.loop(minutes=SEEDING_INCREMENT_TIMER)
-    @for_each_rcon
-    async def update_seeders(self, rcon_server_url, session):
-        """
-        Check if a server is in seeding status and record seeding statistics.
-        If RCON reports `seeding_threshold` is not met, server qualifies as "seeding".
-        Accumulate total "seeding" time for users including "unspent" seeding time to be used
-        for rewards to those who seed.
-        """
-        # Ensure that we are during active seeding hours, if set.
-        try:
-            seeding_start_time_str = global_config['hell_let_loose']['seeding_start_time_utc']
-            seeding_end_time_str = global_config['hell_let_loose']['seeding_end_time_utc']
-
-            seeding_start_time = time.fromisoformat(seeding_start_time_str)
-            seeding_end_time = time.fromisoformat(seeding_end_time_str)
-
-            time_now = datetime.now(timezone.utc).time()
-
-            # https://stackoverflow.com/questions/20518122/python-working-out-if-time-now-is-between-two-times
-            def is_now(start, end, now):
-                if start <= end:
-                    return start <= now <= end
-                else:
-                    return start <= now or now < end
-
-            if not is_now(seeding_start_time, seeding_end_time, time_now):
-                self.logger.debug(f'Not within seeding time range of \"{seeding_start_time_str} - {seeding_end_time_str}\" UTC')
-                return
-
-        except ValueError as e:
-            # If we excepted here, then the string is incorrect in fromisoformat (or something worse!)
-            self.logger.error(f'Can\'t set seeding hours: {e}')
-            pass
-        except TypeError as e:
-            # If we excepted here, then seeding times are undefined, carry on
-            pass
-
-        async with session.get(
-            '%s/api/get_players' % (rcon_server_url)
-        ) as response:
-            player_list = await response.json()
-
-            # Check if player count is below seeding threshold
-            if len(player_list['result']) < global_config['hell_let_loose']['seeding_threshold']:
-                self.logger.debug(f'Server \"{rcon_server_url}\" qualifies for seeding status at this time.')
-
-                # Iterate through current players and accumulate their seeding time
-                for player in player_list['result']:
-                    seeder_query = await HLL_Player.filter(steam_id_64__contains=player['steam_id_64'])
-                    player_name = player['name']
-                    steam_id_64 = player['steam_id_64']
-                    if not seeder_query:
-                        # New seeder, make a record
-                        self.logger.debug(f'Generating new seeder record for \"{player_name}/{steam_id_64}\"')
-                        s = HLL_Player(
-                                steam_id_64=steam_id_64,
-                                player_name=player_name,
-                                discord_id=None,
-                                seeding_time_balance=timedelta(minutes=0),
-                                total_seeding_time=timedelta(minutes=0),
-                                last_seed_check=datetime.now(),
-                            )
-                        await s.save()
-                    elif len(seeder_query) != 1:
-                        self.logger.error(f'Multiple steam64id\'s found for \"{steam_id_64}\"!')
-                    else:
-                        # Account for seeding time for player
-                        seeder = seeder_query[0]
-                        additional_time = timedelta(minutes=SEEDING_INCREMENT_TIMER)
-                        old_seed_balance = seeder.seeding_time_balance
-                        seeder.seeding_time_balance += additional_time
-                        seeder.total_seeding_time += additional_time
-                        seeder.last_seed_check = datetime.now()
-
-                        try:
-                            await seeder.save()
-                            self.logger.debug(f'Successfully updated seeding record for \"{seeder.player_name}\"')
-                        except Exception as e:
-                            self.logger.error(f'Failed updating record \"{seeder.player_name}\" during seeding: {e}')
-
-                        # Check if user has gained an hour of seeding awards.
-                        m, s = divmod(seeder.seeding_time_balance.seconds, 60)
-                        new_hourly, _ = divmod(m, 60)
-
-                        m, s = divmod(old_seed_balance.seconds, 60)
-                        old_hourly, _ = divmod(m, 60)
-
-                        if new_hourly > old_hourly:
-                            self.logger.debug(f'Player \"{seeder.player_name}/{seeder.steam_id_64}\" has gained 1 hour seeder rewards')
-                            result = await self.send_player_message(
-                                rcon_server_url,
-                                session,
-                                seeder.steam_id_64,
-                                global_config['hell_let_loose']['seeder_reward_message'],
-                            )
-                            if not result:
-                                self.logger.error(f'Failed to send seeder reward message to player \"{seeder.steam_id_64}\"')
-
-                self.logger.debug(f'Seeder status updated for server \"{rcon_server_url}\"')
-            else:
-                self.logger.debug("Server %s does not qualify as seeding status at this time (player_count = %s, must be > %s).  Skipping." % (
-                        rcon_server_url,
-                        len(player_list['result']),
-                        global_config['hell_let_loose']['seeding_threshold'],
-                    )
-                )
-
-    def convert_rcon_datetime(self, date_string):
-        """Convert datetime strings from the RCON to datetime objects"""
-        try:
-            # Newer RCON entries do not have the .f field
-            return datetime.strptime(date_string, "%Y-%m-%dT%H:%M:%S%z")
-        except ValueError as e:
-            return datetime.strptime(date_string, "%Y-%m-%dT%H:%M:%S.%f%z")
-
-    @for_each_rcon
-    async def grant_vip(self, rcon_server_url, session, name, steam_id_64, expiration):
-        """
-        Add a new VIP entry to the RCON instances or update an existing entry.
-
-        Must supply the RCON server arguments:
-        name -- user's name in RCON
-        steam_id_64 -- user's `steam64id`
-        expiration -- time VIP expires
-
-        Returns True for success, False for failure.
-        """
-        async with session.post(
-            '%s/api/do_add_vip' % (rcon_server_url),
-            json={
-                'name': name,
-                'steam_id_64': str(steam_id_64),
-                'expiration': expiration,
-            }
-        ) as response:
-            result = await response.json()
-            if result['result'] == 'SUCCESS':
-                self.logger.debug(f'Granted VIP to user \"{name}/{steam_id_64}\", expiration {expiration}')
-                return True
-            else:
-                self.logger.error(f'Failed to update VIP user on \"{rcon_server_url}\": {result}')
-                return False
-
-    @for_each_rcon
-    async def revoke_vip(self, rcon_server_url, session, name, steam_id_64):
-        """Completely remove a VIP entry from the RCON instances."""
-        async with session.post(
-            '%s/api/do_remove_vip' % (rcon_server_url),
-            json={
-                'name': name,
-                'steam_id_64': int(steam_id_64),
-            }
-        ) as response:
-            result = await response.json()
-            if result['result'] == 'SUCCESS':
-                self.logger.debug(f'Revoked VIP for user {name}/{steam_id_64}')
-                return True
-            else:
-                self.logger.error(f'Failed to remove VIP user on "\{rcon_server_url}\": {result}')
-                return False
-    
-    @for_each_rcon
-    async def get_vip(self, rcon_server_url, session, steam_id_64):
-        """
-        Queries the RCON server for all VIP's, and returns a single VIP object
-        based on the input steam64id.
-        """
-        async with session.get(
-            '%s/api/get_vip_ids' % (rcon_server_url)
-        ) as response:
-            result = await response.json()
-            vip_list = result['result']
-            for vip in vip_list:
-                if int(vip['steam_id_64']) == steam_id_64:
-                    return vip
-        return None
-    
-    @for_each_rcon
-    async def get_player_logs(self, rcon_server_url, session, steam_id_64):
-        """
-        Queries the RCON server for the last logs for a user by their steam_id_64.
-        Returns raw logs in a list.
-        """
-        async with session.get(
-            '%s/api/get_structured_logs' % (rcon_server_url),
-            json={
-                'since_min_ago': global_config['hell_let_loose']['max_log_parse_mins']
-            }
-        ) as response:
-            # We have to assume the player name can change, so ensure we only search for steamID's
-            unfiltered_logs = await response.json()
-            player_logs = []
-            for log in unfiltered_logs['result']['logs']:
-                if log['steam_id_64_1'] == steam_id_64 or log['steam_id_64_2'] == steam_id_64:
-                    player_logs.append(log)
-            
-            return player_logs
-    
-    def parse_log_events(self, logs, action):
-        """
-        Takes a list of logs from get_player_logs and returns a list of logs of type ACTION.
-        Actions can be any supported RCON type from game logs:
-        https://github.com/MarechJ/hll_rcon_tool/blob/5cba530ceadd226a80fc345e3607eff7ce4011e1/rcon/game_logs.py#L29-L55
-        """
-        try:
-            parsed_logs = []
-            for log in logs:
-                if log['action'] == action:
-                    parsed_logs.append(log)
-        except ValueError as e:
-            self.logger.error(f'Failed to parse log events as action is undefined: {e}')
-        
-        return parsed_logs
-
-    @for_single_rcon
-    async def send_player_message(self, rcon_server_url, session, steam_id_64, message):
-        """
-        Send a player a message via the RCON.
-        
-        Returns True for success, False for failure
-        """
-        async with session.get(
-            '%s/api/do_message_player' % (rcon_server_url),
-            json={
-                'steam_id_64': steam_id_64,
-                'message': message,
-            }
-        ) as response:
-            result = await response.json()
-            if result['result'] == 'SUCCESS':
-                return True
-        self.logger.error(f'Failed sending message to user {steam_id_64}: {result}')
-        return False
 
     @commands.Cog.listener()
     async def on_application_command_error(

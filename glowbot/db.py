@@ -45,6 +45,20 @@ class GlowDatabase(Tortoise):
 
         return db_config
 
+async def get_player_by_discord_id(id):
+    """
+    Performs a lookup for a user based on their steam_64_id <=> discord_id.
+    If no result, None is returned indicating the user has no entry or hasn't registered.
+    """
+    query_set = await HLL_Player.filter(discord_id__contains=id)
+    if len(query_set) == 0:
+        return None
+    elif len(query_set) != 1:
+        self.logger.fatal("Multiple discord_id's found for %s!" % (id))
+        raise
+    else:
+        return query_set[0]
+
 class HLL_Player(Model):
     """
     Model representing a player <=> discord relationship.

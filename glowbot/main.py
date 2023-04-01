@@ -1,6 +1,7 @@
 import asyncio
 from glowbot.config import global_config
 from glowbot.db import GlowDatabase
+from glowbot.hll_rcon_client import HLL_RCON_Client
 import discord
 from discord.ext import commands
 import logging
@@ -30,8 +31,12 @@ def run_discord_bot():
     # Create a discord bot
     bot = commands.Bot(command_prefix='!')
 
+    # Provide the discord bot with an RCON client:
+    bot.client = HLL_RCON_Client()
+
     # Load the bot extension
     bot.load_extension('glowbot.commands')
+    bot.load_extension('glowbot.tasks')
 
     # Actually run the bot.
     logger.info("Starting discord services...")
