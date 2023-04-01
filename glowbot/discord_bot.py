@@ -8,8 +8,6 @@ import sys
 from tortoise import Tortoise
 import traceback
 
-SUPPORTED_DATABASES = ['sqlite', 'postgres']
-
 class DiscordBot(commands.Bot):
     """
     Primary class representing a single discord bot belonging to a single server.
@@ -24,55 +22,26 @@ class DiscordBot(commands.Bot):
         self.logger = logging.getLogger(__package__)
     
     async def init_db(self):
-        """ Detect the type of database and attempt to initialize it with schemas. """
-        # Only allow a single type of database configuration at a time
-        if len(self.config['database']) != 1:
-            self.logger.fatal("Multiple database configurations detected; only have a single database configuration!")
-            raise Exception
-        
-        if not any(set(self.config['database'].keys()).intersection(SUPPORTED_DATABASES)):
-            self.logger.fatal("No supported database type found in configuration. Supported types are %s." %
-                              (SUPPORTED_DATABASES))
-            raise Exception
-
-        # Build a db_config for init
-        if 'sqlite' in self.config['database']:
-            db_config = {
-                'connections': {
-                    'default': 'sqlite://%s' % (self.config['database']['sqlite']['db_file'])
-                },
-                'apps': {
-                    'glowbot': {
-                        'models': self.models,
+        db_config = {
+            'connections': {
+                'default': {
+                    'engine': "tortoise.backends.asyncpg",
+                    'credentials': {
+                        'host': self.config['database']['postgres']['db_url'],
+                        'port': self.config['database']['postgres']['db_port'],
+                        'user': self.config['database']['postgres']['db_user'],
+                        'password': self.config['database']['postgres']['db_password'],
+                        'database': self.config['database']['postgres']['db_name'],
                     },
                 },
-            }
-        elif 'postgres' in self.config['database']:
-            db_config = {
-                'connections': {
-                    'default': {
-                        'engine': "tortoise.backends.asyncpg",
-                        'credentials': {
-                            'host': self.config['database']['postgres']['db_url'],
-                            'port': self.config['database']['postgres']['db_port'],
-                            'user': self.config['database']['postgres']['db_user'],
-                            'password': self.config['database']['postgres']['db_password'],
-                            'database': self.config['database']['postgres']['db_name'],
-                        },
-                    },
+            },
+            'apps': {
+                'glowbot': {
+                    'models': self.models,
+                    'default_connection': 'default',
                 },
-                'apps': {
-                    'glowbot': {
-                        'models': self.models,
-                        'default_connection': 'default',
-                    },
-                },
-            }
-        else:
-            # Theoretically we don't ever get here, I hope
-            self.logger.fatal("Invalid database driver type: %s" % 
-                              (self.config['database'].keys()[0]))
-            raise Exception
+            },
+        }
 
         self.logger.info("Loading ORM for models: %s" % (self.models))
         await Tortoise.init(config=db_config)
@@ -80,27 +49,6 @@ class DiscordBot(commands.Bot):
     
     def load_config(self, config):
         self.config = config
-
-    async def init_bot(self):
-        """
-        Entrypoint in the class to run the Discord bot.
-        It is async to ensure a single event loop for both py-cord and asyncpg.
-        """
-        # Load cogs first, THEN database, to prevent wiping Meta from Models
-        self.logger.info("Loading discord cog extensions...")
-        try:
-           await self.load_extension('glowbot.hell_let_loose')
-        except Exception as e:
-            self.logger.fatal("Failed to load cog: %s" % (e))
-            traceback.print_exc()
-
-        self.logger.info("Performing database initialization for cogs...")
-        try:
-            await self.init_db()
-        except Exception as e:
-            self.logger.fatal("Failed to initialize database: %s" % (e))
-            traceback.print_exc()
-
 
 def run_discord_bot():
     """primary execution point for the discord bot."""
@@ -132,10 +80,13 @@ def run_discord_bot():
     # We load the configuration as late as possible to allow for customization.
     bot.load_config(config.settings)
 
-    # Load in the event loop for the database and cog initialization
+    # Load the bot extension
+    bot.load_extension('glowbot.hell_let_loose')
+
+    # Load in the event loop for the database initialization
     loop = asyncio.get_event_loop()
     bot.loop = loop
-    loop.run_until_complete(bot.init_bot())
+    loop.run_until_complete(bot.init_db())
 
     # Actually run the bot.
     logger.info("Starting discord services...")
