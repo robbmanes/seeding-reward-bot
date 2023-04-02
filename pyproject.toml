@@ -18,6 +18,7 @@ pytest = "^5.2"
 
 [tool.poetry.scripts]
 glowbot-discord = "glowbot.main:run_discord_bot"
+glowbot-gameservice = "glowbot.main:run_hll_gameservice"
 
 [build-system]
 requires = [

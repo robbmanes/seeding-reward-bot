@@ -19,6 +19,9 @@ class BotCommands(commands.Cog):
         self.bot = bot
         self.client = bot.client
         self.logger = logging.getLogger(__name__)
+
+        # Initialize RCON connections
+        self.client.connect()
     
     @hll.command()
     async def steam64id(self, ctx: discord.ApplicationContext, steam64: Option(

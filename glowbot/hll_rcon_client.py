@@ -1,7 +1,39 @@
 import aiohttp
+import asyncio
 from datetime import datetime
+from enum import StrEnum
 from glowbot.config import global_config
 import logging
+
+class Actions(StrEnum):
+    """
+    Predefined hll_rcon_tool actions as per:
+    https://github.com/MarechJ/hll_rcon_tool/blob/25d5830a3203c76604246073061e8d37dc72bf9c/rcon/extended_commands.py#L33-L58
+    """
+    DISCONNECTED = "DISCONNECTED"
+    CHAT_ALLIES = "CHAT[Allies]"
+    CHAT_AXIS = "CHAT[Axis]"
+    CHAT_ALLIES_UNIT = "CHAT[Allies][Unit]"
+    KILL = "KILL"
+    CONNECTED = "CONNECTED"
+    CHAT_ALLIES_TEAM = "CHAT[Allies][Team]"
+    CHAT_AXIS_TEAM = "CHAT[Axis][Team]"
+    CHAT_AXIS_UNIT = "CHAT[Axis][Unit]"
+    CHAT = "CHAT"
+    VOTE_COMPLETED ="VOTE COMPLETED"
+    VOTE_STARTED = "VOTE STARTED"
+    VOTE = "VOTE"
+    TEAMSWITCH = "TEAMSWITCH"
+    TK_AUTO = "TK AUTO"
+    TK_AUTO_KICKED = "TK AUTO KICKED"
+    TK_AUTO_BANNED = "TK AUTO BANNED"
+    ADMIN = "ADMIN"
+    ADMIN_KICKED = "ADMIN KICKED"
+    ADMIN_BANNED = "ADMIN BANNED"
+    MATCH = "MATCH"
+    MATCH_START = "MATCH START"
+    MATCH_ENDED = "MATCH ENDED"
+    MESSAGE = "MESSAGE"
 
 class HLL_RCON_Client(object):
     """
@@ -13,6 +45,14 @@ class HLL_RCON_Client(object):
 
     def __init__(self):
         self.logger = logging.getLogger(__name__)
+    
+    def connect(self):
+        """
+        Creates connections to RCON endpoints and stores them in self.sessions.
+        Must be called before any other methods are called.
+        """
+        # Get our current event loop
+        event_loop = asyncio.get_event_loop()
 
         # Open an aiohttp session per RCON endpoint
         self.sessions = {}
@@ -147,6 +187,53 @@ class HLL_RCON_Client(object):
                 if int(vip['steam_id_64']) == steam_id_64:
                     return vip
         return None
+    
+    @for_each_rcon
+    async def get_recent_logs(self, rcon_server_url, session, since_min_ago):
+        """
+        Queries the RCON server for all logs and returns them in a list.
+
+        Must supply an int in minutes to limit the query.
+        """
+        async with session.get(
+            '%s/api/get_recent_logs' % (rcon_server_url),
+            json={
+                'since_min_ago': since_min_ago
+            }
+        ) as response:
+            return response.json()['result']['logs']
+    
+    @for_each_rcon
+    async def get_chat_logs(self, since_min_ago):
+        """
+        Queries the RCON server for all logs but returns only chat logs.
+
+        This is done to avoid filtering logic occuring on the RCON side.
+        """
+        actions = [
+            Actions.CHAT,
+            Actions.CHAT_ALLIES,
+            Actions.CHAT_AXIS,
+            Actions.CHAT_ALLIES_UNIT,
+            Actions.CHAT_AXIS_UNIT,
+            Actions.CHAT_ALLIES_TEAM,
+            Actions.CHAT_AXIS_TEAM,
+        ]
+
+        async with session.get(
+            '%s/api/get_recent_logs' % (rcon_server_url),
+            json={
+                'since_min_ago': since_min_ago
+            }
+        ) as response:
+            logs = response.json()['result']['logs']
+
+            chat_logs = []
+            for log in logs:
+                if log['action'] in actions:
+                    chat_logs.append(log)
+            
+            return chat_logs
     
     @for_each_rcon
     async def get_player_logs(self, rcon_server_url, session, steam_id_64):

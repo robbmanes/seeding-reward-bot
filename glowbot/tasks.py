@@ -19,6 +19,9 @@ class BotTasks(commands.Cog):
         self.client = bot.client
         self.logger = logging.getLogger(__name__)
 
+        # Initialize RCON connections
+        self.client.connect()
+
         # Start tasks during init
         self.update_seeders.start()
  
