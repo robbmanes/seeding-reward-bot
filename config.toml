@@ -3,6 +3,7 @@ log_level = "DEBUG"
 
 [discord]
 discord_token = "DISCORD_TOKEN"
+# discord_guild_id = "DISCORD_GUILD_ID"
 
 [database.postgres]
 db_user = "glowbot"

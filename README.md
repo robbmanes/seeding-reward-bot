@@ -10,12 +10,9 @@ This section talks about how to deploy the bot to your Discord server.
 ### Creating the Bot via Discord Developer Portal
 The official instructions for creating a Discord Bot are located on the [discord.py home page](https://discordpy.readthedocs.io/en/stable/discord.html).
 
-This bot requires all three privileged intents currently:
-- Presence Intent
-- Server Members Intent
-- Message Content Intent
+This bot requires *no* Privileged Gateway Intents.
 
-Currently *all* permissions are required via the "Administer" permissions with the intent to limit this to a reasonable subset when minimum-product-viability is available.
+Currently *no* permissions are required for the bot to operate as only slash commands are used.
 
 ## Development
 This section details how to set up a development environment for `glowbot`.
