@@ -62,12 +62,11 @@ class BotTasks(commands.Cog):
             # If we excepted here, then seeding times are undefined, carry on
             pass
 
-        per_rcon_player_list = await self.client.get_player_list()
+        result = await self.client.get_player_list()
 
         # Run once per RCON:
-        for k, v in per_rcon_player_list.keys():
-            rcon_server_url = k
-            player_list = v
+        for rcon_server_url in response.keys():
+            player_list = response[rcon_server_url]
 
             # Check if player count is below seeding threshold
             if len(player_list) < global_config['hell_let_loose']['seeding_threshold']:
