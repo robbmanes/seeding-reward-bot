@@ -51,8 +51,6 @@ class HLL_RCON_Client(object):
         Creates connections to RCON endpoints and stores them in self.sessions.
         Must be called before any other methods are called.
         """
-        # Get our current event loop
-        event_loop = asyncio.get_event_loop()
 
         # Open an aiohttp session per RCON endpoint
         self.sessions = {}
