@@ -65,8 +65,8 @@ class BotTasks(commands.Cog):
         result = await self.client.get_player_list()
 
         # Run once per RCON:
-        for rcon_server_url in response.keys():
-            player_list = response[rcon_server_url]
+        for rcon_server_url in result.keys():
+            player_list = result[rcon_server_url]
 
             # Check if player count is below seeding threshold
             if len(player_list) < global_config['hell_let_loose']['seeding_threshold']:
