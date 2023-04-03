@@ -199,10 +199,18 @@ class HLL_RCON_Client(object):
                 'since_min_ago': since_min_ago
             }
         ) as response:
-            return response.json()['result']['logs']
+            result = await response.json()
+
+            logs = result['result']['logs']
+
+            # If there's nothing, return nothing
+            if len(logs) is 0:
+                return None
+
+            return logs
     
     @for_each_rcon
-    async def get_chat_logs(self, since_min_ago):
+    async def get_chat_logs(self, rcon_server_url, session, since_min_ago):
         """
         Queries the RCON server for all logs but returns only chat logs.
 
@@ -224,13 +232,17 @@ class HLL_RCON_Client(object):
                 'since_min_ago': since_min_ago
             }
         ) as response:
-            logs = response.json()['result']['logs']
+            logs = await response.json()
 
             chat_logs = []
-            for log in logs:
+            for log in logs['result']['logs']:
                 if log['action'] in actions:
                     chat_logs.append(log)
             
+            # If there's nothing, return nothing
+            if len(chat_logs) is 0:
+                return None
+
             return chat_logs
     
     @for_each_rcon

@@ -27,9 +27,14 @@ def run_hll_gameservice():
     logger = logging.getLogger(__package__)
 
     # Initialize database
-    db = GlowDatabase(loop)
+    db = GlowDatabase(asyncio.get_event_loop())
 
-    gameservice = HLL_Gameservice(asyncio.get_event_loop())
+    # Initialize the Gameservice
+    gameservice = HLL_Gameservice()
+
+    # Provide the gameservice with an RCON client
+    gameservice.client = HLL_RCON_Client()
+
     gameservice.run()
 
 def run_discord_bot():
