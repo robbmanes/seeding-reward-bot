@@ -24,7 +24,7 @@ class BotCommands(commands.Cog):
         self.client.connect()
     
     @hll.command()
-    async def steam64id(self, ctx: discord.ApplicationContext, steam64: Option(
+    async def register(self, ctx: discord.ApplicationContext, steam64: Option(
             str,
             'Your Steam ID (64 version, NOT 32 version)',
             required=True,
@@ -38,7 +38,7 @@ class BotCommands(commands.Cog):
         query_result = await HLL_Player.filter(steam_id_64=steam64)
         if len(query_result) > 1:
             self.logger.error('Player lookup during steam64id returned multiple results:')
-            await ctx.respond(f'Found multiple players with that `steam64id` - that shouldn\t happen! Please contact an administrator.')
+            await ctx.respond(f'Found multiple players with that `steam64id` - that shouldn\'t happen! Please contact an administrator.')
             return
         elif len(query_result) == 0:
             # No entry found, make a new one
@@ -80,7 +80,7 @@ class BotCommands(commands.Cog):
         await ctx.defer()
         query_result = await HLL_Player.filter(discord_id=ctx.author.id)
         if len(query_result) == 0:
-            await ctx.respond(f'Your Discord ID doesn\'t match any known `steam64id`. Use `/hll steam64id` to tie your ID to your discord.')
+            await ctx.respond(f'Your Discord ID doesn\'t match any known `steam64id`. Use `/hll register` to tie your ID to your discord.')
             return
         player = query_result[0]
         message = f'Seeding stats for {ctx.author.mention}:'
