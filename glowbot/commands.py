@@ -36,7 +36,7 @@ class BotCommands(commands.Cog):
 
         # See if the user already has an entry
         query_result = await HLL_Player.filter(steam_id_64=steam64)
-        if len(query_result) != 1:
+        if len(query_result) > 1:
             self.logger.error('Player lookup during steam64id returned multiple results:')
             await ctx.respond(f'Found multiple players with that `steam64id` - that shouldn\t happen! Please contact an administrator.')
             return
@@ -54,7 +54,7 @@ class BotCommands(commands.Cog):
             await player.save()
             await ctx.respond(f'{ctx.author.mention}: I\'ve registered your `steam64id` to your Discord account. Thanks!')
             return
-        else:
+        elif len(query_result) == 1:
             # Found one existing entry
             player = query_result[0]
             if player.discord_id is None:
@@ -70,6 +70,8 @@ class BotCommands(commands.Cog):
                 self.logger.debug(f'Discord user {ctx.author.name} attempted to register steam64id `{steam64}` but it is already owned by Discord user {player.discord_id}')
                 await ctx.respond(f'That `steam64id` is already registered to someone else.')
                 return
+        else:
+            raise
     
     @hll.command()
     async def seeder(self, ctx: discord.ApplicationContext):
