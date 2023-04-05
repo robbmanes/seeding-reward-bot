@@ -43,7 +43,7 @@ class BotCommands(commands.Cog):
         elif len(query_result) == 0:
             # No entry found, make a new one
             player = HLL_Player(
-                steam_id_64=steam_id_64,
+                steam_id_64=steam64,
                 player_name=ctx.author.name,
                 discord_id=ctx.author.id,
                 seeding_time_balance=timedelta(minutes=0),
