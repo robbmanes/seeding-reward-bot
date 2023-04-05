@@ -194,8 +194,8 @@ class BotCommands(commands.Cog):
                     await ctx.respond(message)
                     return
 
-                self.logger.fatal(f'Failed claiming VIP for \"{ctx.author.name}/{player.steam_id_64}\: {result}')
-                await ctx.respond(f'{ctx.author.mention}: There was a problem claiming VIP.')
+        self.logger.fatal(f'Failed claiming VIP for \"{ctx.author.name}/{player.steam_id_64}\: {result}')
+        await ctx.respond(f'{ctx.author.mention}: There was a problem claiming VIP.')
     
     @commands.Cog.listener()
     async def on_application_command_error(
