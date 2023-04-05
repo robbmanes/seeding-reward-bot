@@ -65,7 +65,8 @@ class HLL_RCON_Client(object):
 
         This decorator handles auth to the RCON for the session.
         """
-        async def wrapper(self, rcon_server_url, session, *args):
+        async def wrapper(self, rcon_server_url, *args):
+            session = self.sessions[rcon_server_url]
             res = await self.handle_rcon_auth(rcon_server_url, session)
             self.logger.debug(f'Executing \"{fn.__name__}\" with RCON \"{rcon_server_url}\" as an endpoint...')
             res = await fn(self, rcon_server_url, session, *args)
