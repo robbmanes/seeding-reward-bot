@@ -127,7 +127,7 @@ class BotTasks(commands.Cog):
             else:
                 self.logger.debug("Server %s does not qualify as seeding status at this time (player_count = %s, must be > %s).  Skipping." % (
                         rcon_server_url,
-                        len(player_list['result']),
+                        len(player_list),
                         global_config['hell_let_loose']['seeding_threshold'],
                     )
                 )
