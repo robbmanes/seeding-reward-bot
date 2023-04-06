@@ -183,8 +183,15 @@ class HLL_RCON_Client(object):
             result = await response.json()
             vip_list = result['result']
             for vip in vip_list:
-                if int(vip['steam_id_64']) == steam_id_64:
-                    return vip
+                # Work around for https://github.com/MarechJ/hll_rcon_tool/issues/248
+                # We need to verify numerical input
+                try:
+                    if int(vip['steam_id_64']) == steam_id_64:
+                        return vip
+                except ValueError as e:
+                    self.logger.error(f'Improper steam ID for VIP entry from RCON: {e}')
+                    self.logger.error(f'Failed entry: {vip}')
+                    continue
         return None
     
     @for_each_rcon
