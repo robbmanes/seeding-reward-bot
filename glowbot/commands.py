@@ -141,6 +141,7 @@ class BotCommands(commands.Cog):
             message += f'\n🚜 One hour of seeding time is `{vip_value}` hour(s) of VIP status.'
             message += f'\nℹ️ Check your seeding hours with `/hll seeder`.'
             await ctx.respond(message)
+            return
         else:
             player = await get_player_by_discord_id(ctx.author.id)
             if player is None:
@@ -195,9 +196,6 @@ class BotCommands(commands.Cog):
                     await player.save()
                     await ctx.respond(message)
                     return
-
-        self.logger.fatal(f'Failed claiming VIP for \"{ctx.author.name}/{player.steam_id_64}\: {result}')
-        await ctx.respond(f'{ctx.author.mention}: There was a problem claiming VIP.')
     
     @commands.Cog.listener()
     async def on_application_command_error(
