@@ -115,12 +115,12 @@ class BotTasks(commands.Cog):
 
                         if new_hourly > old_hourly:
                             self.logger.debug(f'Player \"{seeder.player_name}/{seeder.steam_id_64}\" has gained 1 hour seeder rewards')
-                            result = await self.client.send_player_message(
+                            msg_result = await self.client.send_player_message(
                                 rcon_server_url,
                                 seeder.steam_id_64,
                                 global_config['hell_let_loose']['seeder_reward_message'],
                             )
-                            if not result:
+                            if not msg_result:
                                 self.logger.error(f'Failed to send seeder reward message to player \"{seeder.steam_id_64}\"')
 
                 self.logger.debug(f'Seeder status updated for server \"{rcon_server_url}\"')
