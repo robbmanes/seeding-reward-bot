@@ -32,13 +32,13 @@ class BotCommands(commands.Cog):
     ):
         """Register your discord account to your steam64Id"""
 
-        await ctx.defer()
+        await ctx.defer(ephemeral=True)
 
         # See if the user already has an entry
         query_result = await HLL_Player.filter(steam_id_64=steam64)
         if len(query_result) > 1:
             self.logger.error('Player lookup during steam64id returned multiple results:')
-            await ctx.respond(f'Found multiple players with that `steam64id` - that shouldn\'t happen! Please contact an administrator.')
+            await ctx.respond(f'Found multiple players with that `steam64id` - that shouldn\'t happen! Please contact an administrator.', ephemeral=True)
             return
         elif len(query_result) == 0:
             # No entry found, make a new one
@@ -52,7 +52,7 @@ class BotCommands(commands.Cog):
             )
             self.logger.debug(f'Discord user {ctx.author.name} is registering steam64id `{steam64}` to {player.discord_id}')
             await player.save()
-            await ctx.respond(f'{ctx.author.mention}: I\'ve registered your `steam64id` to your Discord account. Thanks!')
+            await ctx.respond(f'{ctx.author.mention}: I\'ve registered your `steam64id` to your Discord account. Thanks!', ephemeral=True)
             return
         elif len(query_result) == 1:
             # Found one existing entry
@@ -61,14 +61,14 @@ class BotCommands(commands.Cog):
                 player.discord_id = ctx.author.id
                 await player.save()
                 self.logger.debug(f'Updated user {ctx.author.mention} with steam64id `{steam64}`')
-                await ctx.respond(f'{ctx.author.mention}: I\'ve registered your `steam64id` to your Discord account. Thanks!')
+                await ctx.respond(f'{ctx.author.mention}: I\'ve registered your `steam64id` to your Discord account. Thanks!', ephemeral=True)
                 return
             elif player.discord_id == ctx.author.id:
-                await ctx.respond(f'That `steam64id` is already registered to you!')
+                await ctx.respond(f'That `steam64id` is already registered to you!', ephemeral=True)
                 return
             else:
                 self.logger.debug(f'Discord user {ctx.author.name} attempted to register steam64id `{steam64}` but it is already owned by Discord user {player.discord_id}')
-                await ctx.respond(f'That `steam64id` is already registered to someone else.')
+                await ctx.respond(f'That `steam64id` is already registered to someone else.', ephemeral=True)
                 return
         else:
             raise
@@ -77,10 +77,10 @@ class BotCommands(commands.Cog):
     async def seeder(self, ctx: discord.ApplicationContext):
         """Check your seeding statistics"""
 
-        await ctx.defer()
+        await ctx.defer(ephemeral=True)
         query_result = await HLL_Player.filter(discord_id=ctx.author.id)
         if len(query_result) == 0:
-            await ctx.respond(f'Your Discord ID doesn\'t match any known `steam64id`. Use `/hll register` to tie your ID to your discord.')
+            await ctx.respond(f'Your Discord ID doesn\'t match any known `steam64id`. Use `/hll register` to tie your ID to your discord.', ephemeral=True)
             return
         player = query_result[0]
         message = f'Seeding stats for {ctx.author.mention}:'
@@ -88,17 +88,17 @@ class BotCommands(commands.Cog):
         message += f'\n 🏦 Unspent seeding time balance (hours): `{player.seeding_time_balance}`'
         message += f'\n 🕰️ Last seeding time: `{player.last_seed_check}`'
         message += f'\n ℹ️ Turn your seeding hours into VIP time with `/hll claim`. '
-        await ctx.respond(message)
+        await ctx.respond(message, ephemeral=True)
 
     @hll.command()
     async def vip(self, ctx: discord.ApplicationContext):
         """Check your VIP status"""
 
-        await ctx.defer()
+        await ctx.defer(ephemeral=True)
         self.logger.debug(f'VIP query for `{ctx.author.id}/{ctx.author.name}`.')
         player = await get_player_by_discord_id(ctx.author.id)
         if player is None:
-            await ctx.respond(f'Your Discord ID doesn\'t match any known `steam64id`. Use `/hll steam64id` to tie your ID to your discord.')
+            await ctx.respond(f'Your Discord ID doesn\'t match any known `steam64id`. Use `/hll steam64id` to tie your ID to your discord.', ephemeral=True)
             return
 
         # We need to ensure we get the same VIP states for both RCON's.
@@ -109,21 +109,21 @@ class BotCommands(commands.Cog):
 
         if all(val != vip_entries[0] for val in vip_entries):
             # VIP from all RCON's didn't match, notify.
-            await ctx.respond(f'{ctx.author.mention}: It looks like your VIP status is different between servers, please contact an admin.')
+            await ctx.respond(f'{ctx.author.mention}: It looks like your VIP status is different between servers, please contact an admin.', ephemeral=True)
             return
 
         # All is well, return to the (identical) first in the list
         vip = vip_entries.pop()
 
         if vip == None or vip['vip_expiration'] == None:
-            await ctx.respond(f'No VIP record found for {ctx.author.mention}.')
+            await ctx.respond(f'No VIP record found for {ctx.author.mention}.', ephemeral=True)
             return  
 
         expiration = rcon_time_str_to_datetime(vip['vip_expiration'])
         if expiration.timestamp() < datetime.now().timestamp():
-            await ctx.respond(f'{ctx.author.mention}: your VIP appears to have expired.')
+            await ctx.respond(f'{ctx.author.mention}: your VIP appears to have expired.', ephemeral=True)
             return
-        await ctx.respond(f'{ctx.author.mention}: your VIP expiration date is `{expiration}`')
+        await ctx.respond(f'{ctx.author.mention}: your VIP expiration date is `{expiration}`', ephemeral=True)
 
     @hll.command()
     async def claim(self, ctx: discord.ApplicationContext, hours: Option(
@@ -133,26 +133,26 @@ class BotCommands(commands.Cog):
         )
     ):
         """Redeem seeding hours for VIP status"""
-        await ctx.defer()
+        await ctx.defer(ephemeral=True)
         if hours is None:
             vip_value = global_config['hell_let_loose']['seeder_vip_reward_hours']
             message = f'{ctx.author.mention}:'
             message += f'\n💵 Use `/hll claim $HOURS` to turn seeding hours into VIP status.'
             message += f'\n🚜 One hour of seeding time is `{vip_value}` hour(s) of VIP status.'
             message += f'\nℹ️ Check your seeding hours with `/hll seeder`.'
-            await ctx.respond(message)
+            await ctx.respond(message, ephemeral=True)
             return
         else:
             player = await get_player_by_discord_id(ctx.author.id)
             if player is None:
                 message = f'{ctx.author.mention}: Can\'t find your ID to claim VIP.'
                 message += f'\nMake sure you have run `/hll steam64id` and registered your Steam and Discord.'
-                await ctx.respond(message)
+                await ctx.respond(message, ephemeral=True)
                 return
             else:
                 self.logger.debug(f'User \"{ctx.author.name}/{player.steam_id_64}\" is attempting to claim {hours} seeder hours from their total of {player.seeding_time_balance}.')
                 if hours > player.seeding_time_balance.seconds // 3600:
-                    await ctx.respond(f'{ctx.author.mention}: ❌ Sorry, not enough banked time to claim `{hours}` hour(s) of VIP (Currently have `{player.seeding_time_balance.seconds // 3600}` banked hours).')
+                    await ctx.respond(f'{ctx.author.mention}: ❌ Sorry, not enough banked time to claim `{hours}` hour(s) of VIP (Currently have `{player.seeding_time_balance.seconds // 3600}` banked hours).', ephemeral=True)
                     return
                 else:
                     player.seeding_time_balance -= timedelta(hours=hours)
@@ -164,7 +164,7 @@ class BotCommands(commands.Cog):
                         vip_entries.append(vip)
                     if all(val != vip_entries[0] for val in vip_entries):
                         # VIP from all RCON's didn't match, notify.
-                        await ctx.respond(f'{ctx.author.mention}: It looks like your VIP status is different between servers, please contact an admin.')
+                        await ctx.respond(f'{ctx.author.mention}: It looks like your VIP status is different between servers, please contact an admin.', ephemeral=True)
                         return
 
                     # All is well, return to the (identical) first in the list
@@ -194,7 +194,7 @@ class BotCommands(commands.Cog):
                     message += f'\nYour remaining seeder balance is `{player.seeding_time_balance}` hour(s).'
                     message += f'\n💗 Thanks for seeding! 💗'
                     await player.save()
-                    await ctx.respond(message)
+                    await ctx.respond(message, ephemeral=True)
                     return
     
     @commands.Cog.listener()
@@ -203,9 +203,9 @@ class BotCommands(commands.Cog):
         """Handle exceptions and discord errors, including permissions"""
 
         if isinstance(error, commands.NotOwner):
-             await ctx.respond('Insufficient privileges to use that command.')
+             await ctx.respond('Insufficient privileges to use that command.', ephemeral=True)
         else:
-            await ctx.respond("Whoops! An internal error occurred. Please ping my maintainer!")
+            await ctx.respond('Whoops! An internal error occurred. Please ping my maintainer!', ephemeral=True)
             raise error
     
     def cog_unload(self):
