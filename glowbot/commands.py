@@ -98,7 +98,7 @@ class BotCommands(commands.Cog):
         self.logger.debug(f'VIP query for `{ctx.author.id}/{ctx.author.name}`.')
         player = await get_player_by_discord_id(ctx.author.id)
         if player is None:
-            await ctx.respond(f'Your Discord ID doesn\'t match any known `steam64id`. Use `/hll steam64id` to tie your ID to your discord.', ephemeral=True)
+            await ctx.respond(f'Your Discord ID doesn\'t match any known `steam64id`. Use `/hll register` to tie your ID to your discord.', ephemeral=True)
             return
 
         # We need to ensure we get the same VIP states for both RCON's.
@@ -146,7 +146,7 @@ class BotCommands(commands.Cog):
             player = await get_player_by_discord_id(ctx.author.id)
             if player is None:
                 message = f'{ctx.author.mention}: Can\'t find your ID to claim VIP.'
-                message += f'\nMake sure you have run `/hll steam64id` and registered your Steam and Discord.'
+                message += f'\nMake sure you have run `/hll register` and registered your Steam and Discord.'
                 await ctx.respond(message, ephemeral=True)
                 return
             else:
