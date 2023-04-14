@@ -24,7 +24,7 @@ class BotTasks(commands.Cog):
 
         # Start tasks during init
         self.update_seeders.start()
- 
+
     @tasks.loop(minutes=SEEDING_INCREMENT_TIMER)
     async def update_seeders(self):
         """
@@ -106,22 +106,23 @@ class BotTasks(commands.Cog):
                         except Exception as e:
                             self.logger.error(f'Failed updating record \"{seeder.player_name}\" during seeding: {e}')
 
-                        # Check if user has gained an hour of seeding awards.
-                        m, s = divmod(seeder.seeding_time_balance.seconds, 60)
-                        new_hourly, _ = divmod(m, 60)
+                        if global_config['hell_let_loose']['allow_seeder_reward_message'] is True:
+                            # Check if user has gained an hour of seeding awards.
+                            m, s = divmod(seeder.seeding_time_balance.seconds, 60)
+                            new_hourly, _ = divmod(m, 60)
 
-                        m, s = divmod(old_seed_balance.seconds, 60)
-                        old_hourly, _ = divmod(m, 60)
+                            m, s = divmod(old_seed_balance.seconds, 60)
+                            old_hourly, _ = divmod(m, 60)
 
-                        if new_hourly > old_hourly:
-                            self.logger.debug(f'Player \"{seeder.player_name}/{seeder.steam_id_64}\" has gained 1 hour seeder rewards')
-                            msg_result = await self.client.send_player_message(
-                                rcon_server_url,
-                                seeder.steam_id_64,
-                                global_config['hell_let_loose']['seeder_reward_message'],
-                            )
-                            if not msg_result:
-                                self.logger.error(f'Failed to send seeder reward message to player \"{seeder.steam_id_64}\"')
+                            if new_hourly > old_hourly:
+                                self.logger.debug(f'Player \"{seeder.player_name}/{seeder.steam_id_64}\" has 1 hour seeding time')
+                                msg_result = await self.client.send_player_message(
+                                    rcon_server_url,
+                                    seeder.steam_id_64,
+                                    global_config['hell_let_loose']['seeder_reward_message'],
+                                )
+                                if not msg_result:
+                                    self.logger.error(f'Failed to send seeder reward message to player \"{seeder.steam_id_64}\"')
 
                 self.logger.debug(f'Seeder status updated for server \"{rcon_server_url}\"')
             else:
