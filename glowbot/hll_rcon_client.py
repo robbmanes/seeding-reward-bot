@@ -308,6 +308,12 @@ class HLL_RCON_Client(object):
         
         Returns True for success, False for failure
         """
+
+        if global_config['hell_let_loose']['allow_messages_to_players'] is True:
+            # early exit if config says don't send messages to players...
+            # useful when (sneakily) testing!
+            return True
+
         async with session.get(
             '%s/api/do_message_player' % (rcon_server_url),
             json={

@@ -24,7 +24,7 @@ class BotTasks(commands.Cog):
 
         # Start tasks during init
         self.update_seeders.start()
- 
+
     @tasks.loop(minutes=SEEDING_INCREMENT_TIMER)
     async def update_seeders(self):
         """
@@ -52,6 +52,14 @@ class BotTasks(commands.Cog):
 
             if not is_now(seeding_start_time, seeding_end_time, time_now):
                 self.logger.debug(f'Not within seeding time range of \"{seeding_start_time_str} - {seeding_end_time_str}\" UTC')
+                status_string = "Outside seeding window"
+                # presence updates rate limited to 5 updates / 20s:
+                if self.bot.ws is not None:
+                    # websocket may not be created first time this is run. it is created during bot.run().
+                    # i don't think update_seeders.start() should be run from __init__()...
+                    # but from where? discord.on_ready() seems promising, but documenation
+                    # claims it could be called more than once.
+                    await self.bot.change_presence(status=discord.Status.idle, activity=discord.Game(status_string))
                 return
 
         except ValueError as e:
@@ -106,24 +114,29 @@ class BotTasks(commands.Cog):
                         except Exception as e:
                             self.logger.error(f'Failed updating record \"{seeder.player_name}\" during seeding: {e}')
 
-                        # Check if user has gained an hour of seeding awards.
-                        m, s = divmod(seeder.seeding_time_balance.seconds, 60)
-                        new_hourly, _ = divmod(m, 60)
+                        if global_config['hell_let_loose']['allow_seeder_reward_message'] is True:
+                            # Check if user has gained an hour of seeding awards.
+                            m, s = divmod(seeder.seeding_time_balance.seconds, 60)
+                            new_hourly, _ = divmod(m, 60)
 
-                        m, s = divmod(old_seed_balance.seconds, 60)
-                        old_hourly, _ = divmod(m, 60)
+                            m, s = divmod(old_seed_balance.seconds, 60)
+                            old_hourly, _ = divmod(m, 60)
 
-                        if new_hourly > old_hourly:
-                            self.logger.debug(f'Player \"{seeder.player_name}/{seeder.steam_id_64}\" has gained 1 hour seeder rewards')
-                            msg_result = await self.client.send_player_message(
-                                rcon_server_url,
-                                seeder.steam_id_64,
-                                global_config['hell_let_loose']['seeder_reward_message'],
-                            )
-                            if not msg_result:
-                                self.logger.error(f'Failed to send seeder reward message to player \"{seeder.steam_id_64}\"')
+                            if new_hourly > old_hourly:
+                                self.logger.debug(f'Player \"{seeder.player_name}/{seeder.steam_id_64}\" has 1 hour seeding time')
+                                msg_result = await self.client.send_player_message(
+                                    rcon_server_url,
+                                    seeder.steam_id_64,
+                                    global_config['hell_let_loose']['seeder_reward_message'],
+                                )
+                                if not msg_result:
+                                    self.logger.error(f'Failed to send seeder reward message to player \"{seeder.steam_id_64}\"')
 
                 self.logger.debug(f'Seeder status updated for server \"{rcon_server_url}\"')
+                status_string = f"Seeding - {len(player_list)}<{global_config['hell_let_loose']['seeding_threshold']}"
+                # presence updates rate limited to 5 updates / 20s:
+                if self.bot.ws is not None:
+                    await self.bot.change_presence(status=discord.Status.online, activity=discord.Game(status_string))
             else:
                 self.logger.debug("Server %s does not qualify as seeding status at this time (player_count = %s, must be > %s).  Skipping." % (
                         rcon_server_url,
@@ -131,6 +144,11 @@ class BotTasks(commands.Cog):
                         global_config['hell_let_loose']['seeding_threshold'],
                     )
                 )
+                # status_string = f"Seeding done - {len(player_list)}/100"
+                status_string = f"Seeding done"
+                # presence updates rate limited to 5 updates / 20s:
+                if self.bot.ws is not None:
+                    await self.bot.change_presence(status=discord.Status.idle, activity=discord.Game(status_string))
 
     def cog_unload(self):
         pass

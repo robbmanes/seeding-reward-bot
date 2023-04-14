@@ -54,7 +54,10 @@ async def get_player_by_discord_id(id):
     if len(query_set) == 0:
         return None
     elif len(query_set) != 1:
-        self.logger.fatal("Multiple discord_id's found for %s!" % (id))
+        # todo: no self + need better handling...
+        # shouldn't allow ppl to register more than one steamid... should replace existing
+        # steamid in record! 
+        # self.logger.fatal("Multiple discord_id's found for %s!" % (id))
         raise
     else:
         return query_set[0]
