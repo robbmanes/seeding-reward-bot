@@ -35,8 +35,6 @@ class BotCommands(commands.Cog):
         await ctx.defer(ephemeral=True)
 
         # See if the user already has an entry
-        # todo: need to validate steam64 is an integer of correct form...
-        # todo: could also use steam api to validate steamid64 refers to steam account?
         query_result = await HLL_Player.filter(steam_id_64=steam64)
         if len(query_result) > 1:
             self.logger.error('Player lookup during steam64id returned multiple results:')
@@ -89,7 +87,8 @@ class BotCommands(commands.Cog):
         message += f'\n 🌱 Total seeding time (hours): `{player.total_seeding_time}`'
         message += f'\n 🏦 Unspent seeding time balance (hours): `{player.seeding_time_balance}`'
         message += f'\n 🕰️ Last seeding time: <t:{int(player.last_seed_check.timestamp())}:R>'
-        message += f"\n ℹ️ Turn your seeding hours into VIP time with `/hll claim`. One hour of seeding = {global_config['hell_let_loose']['seeder_vip_reward_hours']} hour(s) of VIP."
+        seeder_vip_reward_hours = global_config['hell_let_loose']['seeder_vip_reward_hours']
+        message += f'\n ℹ️ Turn your seeding hours into VIP time with `/hll claim`. One hour of seeding = {seeder_vip_reward_hours} hour(s) of VIP.'
         await ctx.respond(message, ephemeral=True)
 
     @hll.command()
@@ -164,9 +163,6 @@ class BotCommands(commands.Cog):
                     await ctx.respond(f'{ctx.author.mention}: ❌ Sorry, not enough banked time to claim `{hours}` hour(s) of VIP (Currently have `{player.seeding_time_balance.seconds // 3600}` banked hours).', ephemeral=True)
                     return
                 else:
-                    # policy question... should ppl accrue seeding hours if they already have
-                    # permanent vip? i.e., they currently purchase vip or have free vip through
-                    # some other means?
 
                     # Check the previous VIP values from both RCON's to ensure they are identical prior to proceeding
                     vip_dict = await self.client.get_vip(player.steam_id_64)
@@ -182,7 +178,6 @@ class BotCommands(commands.Cog):
                     vip = vip_entries.pop()
                     
                     grant_value = global_config['hell_let_loose']['seeder_vip_reward_hours'] * hours
-                    # abu says vip['vip_expiration'] == None means permanent vip, but not always??? leave as-is.
                     if vip is None or vip['vip_expiration'] == None:
                         expiration = datetime.now() + timedelta(hours=grant_value)
                     else:
@@ -193,13 +188,13 @@ class BotCommands(commands.Cog):
 
                         expiration = cur_expiration + timedelta(hours=grant_value)
 
-                    message = ""
-                    if cur_expiration >= datetime(year=2200, month=1, day=1, tzinfo=timezone.utc): 
+                    message = ''
+                    if expiration >= datetime(year=2200, month=1, day=1, tzinfo=timezone.utc): 
                         # non-expiring vip... converting seeding hours is pointless...
-                        message += "Your VIP does not expire... no need to convert seeding hours!"
+                        message += 'Your VIP does not expire... no need to convert seeding hours!'
                     else:
                         # Make sure all RCON grants are successful.
-                        result_dict = await self.client.grant_vip(player.player_name, player.steam_id_64, expiration.strftime("%Y-%m-%dT%H:%M:%S%z"))
+                        result_dict = await self.client.grant_vip(player.player_name, player.steam_id_64, expiration.strftime('%Y-%m-%dT%H:%M:%S%z'))
                         for rcon, result in result_dict.items():
                             if result is False:
                                 self.logger.error(f'Problem assigning VIP in `claim` for \"{rcon}\": {result}')
@@ -212,7 +207,6 @@ class BotCommands(commands.Cog):
                         message += f'{ctx.author.mention}: You\'ve added `{grant_value}` hour(s) to your VIP status.'
                         message += f'\nYour VIP expiration date is <t:{int(expiration.timestamp())}:R>'
 
-                    # common messages...
                     message += f'\nYour remaining seeder balance is `{player.seeding_time_balance}` hour(s).'
                     message += f'\n💗 Thanks for seeding! 💗'
                     await player.save()

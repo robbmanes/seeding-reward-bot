@@ -35,7 +35,7 @@ def run_discord_bot():
     db = GlowDatabase(asyncio.get_event_loop())
 
     # Create a discord bot
-    bot = commands.Bot(command_prefix='!', status=discord.Status.idle, activity=discord.Game("Warming up"))
+    bot = commands.Bot(command_prefix='!')
 
     # Provide the discord bot with an RCON client:
     bot.client = HLL_RCON_Client()
@@ -60,5 +60,4 @@ def run_discord_bot():
     )
 
 if __name__ == '__main__':
-    run_discord_bot()
     sys.exit(0)
