@@ -86,7 +86,7 @@ class BotTasks(commands.Cog):
                                 discord_id=None,
                                 seeding_time_balance=timedelta(minutes=0),
                                 total_seeding_time=timedelta(minutes=0),
-                                last_seed_check=datetime.now(),
+                                last_seed_check=datetime.now(timezone.utc),
                             )
                         await s.save()
                     elif len(seeder_query) != 1:
@@ -98,7 +98,7 @@ class BotTasks(commands.Cog):
                         old_seed_balance = seeder.seeding_time_balance
                         seeder.seeding_time_balance += additional_time
                         seeder.total_seeding_time += additional_time
-                        seeder.last_seed_check = datetime.now()
+                        seeder.last_seed_check = datetime.now(timezone.utc)
 
                         try:
                             await seeder.save()
