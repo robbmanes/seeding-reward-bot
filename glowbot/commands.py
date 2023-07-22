@@ -155,7 +155,6 @@ class BotCommands(commands.Cog):
                     await ctx.respond(f'{ctx.author.mention}: ❌ Sorry, not enough banked time to claim `{hours}` hour(s) of VIP (Currently have `{player.seeding_time_balance.seconds // 3600}` banked hours).', ephemeral=True)
                     return
                 else:
-                    player.seeding_time_balance -= timedelta(hours=hours)
 
                     # Check the previous VIP values from both RCON's to ensure they are identical prior to proceeding
                     vip_dict = await self.client.get_vip(player.steam_id_64)
@@ -188,6 +187,9 @@ class BotCommands(commands.Cog):
                             self.logger.error(f'Problem assigning VIP in `claim` for \"{rcon}\": {result}')
                             await ctx.respond(f'{ctx.author.mention}: There was a problem on one of the servers assigning your VIP.')
                             return
+
+                    # !!! should only decrease banked seeding time if it is actually used...
+                    player.seeding_time_balance -= timedelta(hours=hours)
 
                     message = f'{ctx.author.mention}: You\'ve added `{grant_value}` hour(s) to your VIP status.'
                     message += f'\nYou have VIP until `{expiration}`'
