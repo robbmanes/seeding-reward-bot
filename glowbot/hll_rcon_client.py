@@ -212,7 +212,7 @@ class HLL_RCON_Client(object):
             logs = result['result']['logs']
 
             # If there's nothing, return nothing
-            if len(logs) is 0:
+            if len(logs) == 0:
                 return None
 
             return logs
@@ -248,7 +248,7 @@ class HLL_RCON_Client(object):
                     chat_logs.append(log)
             
             # If there's nothing, return nothing
-            if len(chat_logs) is 0:
+            if len(chat_logs) == 0:
                 return None
 
             return chat_logs

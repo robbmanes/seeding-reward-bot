@@ -68,6 +68,10 @@ class BotTasks(commands.Cog):
         for rcon_server_url in result.keys():
             player_list = result[rcon_server_url]
 
+            # Check if the player list is empty. If it is, skip it.
+            if player_list == None:
+                continue
+
             # Check if player count is below seeding threshold
             if len(player_list) < global_config['hell_let_loose']['seeding_threshold']:
                 self.logger.debug(f'Server \"{rcon_server_url}\" qualifies for seeding status at this time.')
