@@ -44,6 +44,9 @@ def run_discord_bot():
     bot.load_extension('glowbot.commands')
     bot.load_extension('glowbot.tasks')
 
+    # Remove Discord verbose logging
+    discord.utils.setup_logging(level=logging.INFO, root=False)
+
     # Pass in guild ID's, if there are any
     try:
         bot.guild_ids = []
@@ -56,7 +59,7 @@ def run_discord_bot():
     logger.info("Starting discord services...")
     bot.run(
         global_config['discord']['discord_token'],
-        reconnect=True,
+        reconnect=True
     )
 
 if __name__ == '__main__':
