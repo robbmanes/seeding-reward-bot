@@ -52,6 +52,9 @@ def run_discord_bot():
         logger.info('No guild ID\'s configured, proceeding...')
         pass
 
+    # Disable Discord verbose logging - it's spammy
+    logging.getLogger("discord").setLevel(logging.WARNING)
+
     # Actually run the bot.
     logger.info("Starting discord services...")
     bot.run(
