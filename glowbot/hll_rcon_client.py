@@ -327,6 +327,21 @@ class HLL_RCON_Client(object):
         self.logger.error(f'Failed sending message to user {steam_id_64}: {result}')
         return False
 
+    async def teardown(self):
+        """
+        Tear down asyncio connections for when the bot goes offline.
+
+        No return value.
+        """
+
+        for rcon_url, session in self.sessions.items():
+            try:
+                await session.close()
+            except Exception as e:
+                self.logger.error(f'Failed to shut down session for {rcon_url}: {e}')
+                continue
+
+
 def rcon_time_str_to_datetime(date_string):
     """Convert datetime strings from the RCON to datetime objects"""
     try:
