@@ -314,7 +314,7 @@ class HLL_RCON_Client(object):
             # useful when (sneakily) testing!
             return True
 
-        async with session.get(
+        async with session.post(
             '%s/api/do_message_player' % (rcon_server_url),
             json={
                 'steam_id_64': steam_id_64,
