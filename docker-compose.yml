@@ -1,0 +1,21 @@
+version: "3.8"
+
+name: seeding-reward-bot
+services:
+  seeding-reward-bot:
+    container_name: seeding-reward-bot
+    volumes:
+      - ./config.toml:/home/seedbot/seeding_reward_bot/config.toml
+    image: seeding-reward-bot
+    restart: on-failure
+    build:
+      dockerfile: ./Dockerfile
+    network_mode: host
+  seeding-reward-bot-postgres-db:
+    container_name: seeding-reward-bot-postgres-db
+    volumes:
+      - ./seedbot-db:/var/lib/postgresql/data
+    image: docker.io/postgres:15.2
+    restart: on-failure
+    ports:
+      - 5432:5432
