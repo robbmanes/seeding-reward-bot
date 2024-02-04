@@ -1,9 +1,9 @@
 import asyncio
 import discord
 from discord.ext import commands
-from seedbot.config import global_config
-from seedbot.db import GlowDatabase
-from seedbot.hll_rcon_client import HLL_RCON_Client
+from seeding_reward_bot.config import global_config
+from seeding_reward_bot.db import SeedDatabase
+from seeding_reward_bot.hll_rcon_client import HLL_RCON_Client
 import logging
 import os
 import sys
@@ -32,7 +32,7 @@ def run_discord_bot():
         global_config['discord']['discord_guild_id'] = env_token
 
     # Initialize database
-    db = GlowDatabase(asyncio.get_event_loop())
+    db = SeedDatabase(asyncio.get_event_loop())
 
     # Create a discord bot
     bot = commands.Bot(command_prefix='!')
@@ -41,8 +41,8 @@ def run_discord_bot():
     bot.client = HLL_RCON_Client()
 
     # Load the bot extension
-    bot.load_extension('seedbot.commands')
-    bot.load_extension('seedbot.tasks')
+    bot.load_extension('seeding_reward_bot.commands')
+    bot.load_extension('seeding_reward_bot.tasks')
 
     # Pass in guild ID's, if there are any
     try:

@@ -20,8 +20,8 @@ myst-parser = "^1.0.0"
 furo = "^2023.3.27"
 
 [tool.poetry.scripts]
-seedbot = "seedbot.main:run_discord_bot"
-seedbot_gameservice = "seedbot.main:run_hll_gameservice"
+seedbot = "seeding_reward_bot.main:run_discord_bot"
+seedbot_gameservice = "seeding_reward_bot.main:run_hll_gameservice"
 
 [build-system]
 requires = [

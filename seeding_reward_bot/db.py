@@ -1,15 +1,15 @@
-from glowbot.config import global_config
+from seeding_reward_bot.config import global_config
 import logging
 from tortoise import Tortoise, fields
 from tortoise.models import Model
 
-class GlowDatabase(Tortoise):
+class SeedDatabase(Tortoise):
     """
-    Extension of the base Tortoise database for Glowbot.
+    Extension of the base Tortoise database for seeding-reward-bot.
     Only supports postgresql, and self-generates configuration and initialization.
     """
 
-    models = ['aerich.models', 'glowbot.db']
+    models = ['aerich.models', 'seedbot.db']
 
     def __init__(self, event_loop):
         super().__init__()

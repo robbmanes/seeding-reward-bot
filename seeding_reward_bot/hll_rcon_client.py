@@ -2,7 +2,7 @@ import aiohttp
 import asyncio
 from datetime import datetime
 from enum import StrEnum
-from seedbot.config import global_config
+from seeding_reward_bot.config import global_config
 import logging
 
 class Actions(StrEnum):

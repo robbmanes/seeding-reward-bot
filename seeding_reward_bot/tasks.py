@@ -1,10 +1,10 @@
 from datetime import datetime, time, timedelta, timezone
-from seedbot.db import HLL_Player
+from seeding_reward_bot.db import HLL_Player
 import discord
 from discord.commands import Option
 from discord.commands import SlashCommandGroup
 from discord.ext import commands, tasks
-from seedbot.config import global_config
+from seeding_reward_bot.config import global_config
 import logging
 
 SEEDING_INCREMENT_TIMER = 3 # Minutes - how often the RCON is queried for seeding checks
