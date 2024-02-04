@@ -1,9 +1,9 @@
 import asyncio
 import discord
 from discord.ext import commands
-from glowbot.config import global_config
-from glowbot.db import GlowDatabase
-from glowbot.hll_rcon_client import HLL_RCON_Client
+from seedbot.config import global_config
+from seedbot.db import GlowDatabase
+from seedbot.hll_rcon_client import HLL_RCON_Client
 import logging
 import os
 import sys
@@ -14,7 +14,7 @@ def run_discord_bot():
     Entry point for discord bot.
     """
     # Set logging level
-    match global_config['glowbot']['log_level']:
+    match global_config['seedbot']['log_level']:
         case 'INFO':
             logging.basicConfig(level=logging.INFO)
         case 'DEBUG':
@@ -41,8 +41,8 @@ def run_discord_bot():
     bot.client = HLL_RCON_Client()
 
     # Load the bot extension
-    bot.load_extension('glowbot.commands')
-    bot.load_extension('glowbot.tasks')
+    bot.load_extension('seedbot.commands')
+    bot.load_extension('seedbot.tasks')
 
     # Pass in guild ID's, if there are any
     try:

@@ -1,9 +1,9 @@
 FROM docker.io/python:3.11.7-bullseye
-RUN useradd glowbot -m && \
-    git clone https://github.com/glows-battlegrounds/GlowBot.git /home/glowbot/GlowBot
-USER glowbot
-WORKDIR /home/glowbot/GlowBot
+RUN useradd seedbot -m && \
+    git clone https://github.com/robbmanes/seeding-reward-bot.git /home/seedbot/seedbot
+USER seedbot
+WORKDIR /home/seedbot/seedbot
 RUN curl -sSL https://install.python-poetry.org | python3 - && \
-    /home/glowbot/.local/bin/poetry install
-VOLUME /home/glowbot/config.toml
-CMD ["/home/glowbot/.local/bin/poetry", "run", "glowbot-discord"]
+    /home/seedbot/.local/bin/poetry install
+VOLUME /home/seedbot/config.toml
+CMD ["/home/seedbot/.local/bin/poetry", "run", "seedbot"]

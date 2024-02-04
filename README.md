@@ -1,5 +1,5 @@
-# glowbot
-Glow's Hell Let Loose Community Discord Bot.
+# seeding-reward-bot
+Discord Bot for encouraging and rewarding seeding for select games.
 
 Proudly used in:
 - [Glow's Battlegrounds Community](https://discord.gg/glows).
@@ -15,7 +15,7 @@ This bot requires *no* Privileged Gateway Intents.
 Currently *no* permissions are required for the bot to operate as only slash commands are used.
 
 ## Development
-This section details how to set up a development environment for `glowbot`.
+This section details how to set up a development environment for `seeding-reward-bot`.
 
 ### Install Poetry
 Building and Development is done with [poetry](https://python-poetry.org/docs/).  Ensure you have install poetry on your local system prior to beginning development:
@@ -33,7 +33,7 @@ $ poetry env info
 Virtualenv
 Python:         3.10.6
 Implementation: CPython
-Path:           /home/rmanes/.cache/pypoetry/virtualenvs/glowbot1-tut94FM2-py3.10
+Path:           /home/rmanes/.cache/pypoetry/virtualenvs/seeding-reward-bot-tut94FM2-py3.10
 Valid:          True
 
 System
@@ -69,10 +69,10 @@ Only *one* type of database can be configured at a time.  If both are present in
 This configuration is very easy and requires little to no configuration.  Simply add the following to your `config.toml` (which is in the default `toml` file already):
 ```toml
 [database.sqlite]
-db_file = "glowbot.db"
+db_file = "seedbot.db"
 ```
 
-This will create an SQLite database file at the root of the `glowbot` project.
+This will create an SQLite database file at the root of the `seeding-reward-bot` project.
 
 ### PostgeSQL configuration.
 Postgres requires the following configuration defined in the `config.toml` to function:
@@ -87,8 +87,8 @@ db_name = "mydb"
 
 The above example will equate to a connection string of `postgres://myuser:mypassword/localhost:5432/mydb` to connect to an existing PostgreSQL instance.
 
-### Running glowbot-discord
-Assuming you have the proper virtual environment configured and currently active, use `poetry` to run `glowbot` like so:
+### Running seeding-reward-bot
+Assuming you have the proper virtual environment configured and currently active, use `poetry` to run `seedbot` like so:
 ```shell
-$ poetry run glowbot-discord
+$ poetry run seedbot
 ```

@@ -1,10 +1,10 @@
 from datetime import datetime, time, timedelta, timezone
-from glowbot.db import HLL_Player
+from seedbot.db import HLL_Player
 import discord
 from discord.commands import Option
 from discord.commands import SlashCommandGroup
 from discord.ext import commands, tasks
-from glowbot.config import global_config
+from seedbot.config import global_config
 import logging
 
 SEEDING_INCREMENT_TIMER = 3 # Minutes - how often the RCON is queried for seeding checks

@@ -1,4 +1,4 @@
-[glowbot]
+[seedbot]
 log_level = "DEBUG"
 
 [discord]
@@ -6,11 +6,11 @@ discord_token = "DISCORD_TOKEN"
 # discord_guild_id = "DISCORD_GUILD_ID"
 
 [database.postgres]
-db_user = "glowbot"
-db_password = "glowbot"
+db_user = "seedbot"
+db_password = "seedbot"
 db_url = "localhost"
 db_port = 5432
-db_name = "glowbot"
+db_name = "seedbot"
 
 [hell_let_loose]
 rcon_url = ["https://rcon_server_1.com:8080", "https://rcon_server_2.com:8081"]

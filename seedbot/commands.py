@@ -3,9 +3,9 @@ import discord
 from discord.commands import Option
 from discord.commands import SlashCommandGroup
 from discord.ext import commands, tasks
-from glowbot.config import global_config
-from glowbot.db import HLL_Player, get_player_by_discord_id
-from glowbot.hll_rcon_client import HLL_RCON_Client, rcon_time_str_to_datetime
+from seed.config import global_config
+from seedbot.db import HLL_Player, get_player_by_discord_id
+from seedbot.hll_rcon_client import HLL_RCON_Client, rcon_time_str_to_datetime
 import logging
 
 class BotCommands(commands.Cog):

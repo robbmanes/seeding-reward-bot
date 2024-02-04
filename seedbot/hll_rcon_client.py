@@ -2,7 +2,7 @@ import aiohttp
 import asyncio
 from datetime import datetime
 from enum import StrEnum
-from glowbot.config import global_config
+from seedbot.config import global_config
 import logging
 
 class Actions(StrEnum):

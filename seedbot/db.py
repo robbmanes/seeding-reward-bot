@@ -36,7 +36,7 @@ class GlowDatabase(Tortoise):
                 },
             },
             'apps': {
-                'glowbot': {
+                'seedbot': {
                     'models': self.models,
                     'default_connection': 'default',
                 },
