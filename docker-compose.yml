@@ -12,6 +12,9 @@ services:
       dockerfile: ./Dockerfile
     network_mode: host
   seeding-reward-bot-postgres-db:
+    environment:
+      - POSTGRES_USER=seedbot
+      - POSTGRES_PASSWORD=seedbot
     container_name: seeding-reward-bot-postgres-db
     volumes:
       - ./seedbot-db:/var/lib/postgresql/data
