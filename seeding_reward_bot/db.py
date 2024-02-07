@@ -63,7 +63,7 @@ class HLL_Player(Model):
     """
     Model representing a player <=> discord relationship.
     """
-    steam_id_64 = fields.BigIntField(description='Steam64Id for the player')
+    steam_id_64 = fields.TextField(description='Steam64Id for the player')
     player_name = fields.TextField(description='Player\'s stored name', null=True)
     discord_id = fields.TextField(description='Discord ID for player', null=True)
     seeding_time_balance = fields.TimeDeltaField(description='Amount of unspent seeding hours')
