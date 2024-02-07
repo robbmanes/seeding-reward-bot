@@ -220,7 +220,17 @@ class BotCommands(commands.Cog):
         if isinstance(error, commands.NotOwner):
              await ctx.respond('Insufficient privileges to use that command.', ephemeral=True)
         else:
-            await ctx.respond('Whoops! An internal error occurred. Please ping my maintainer!', ephemeral=True)
+            message = '%s' % global_config['seedbot']['error_message']
+            if global_config['seedbot']['maintainer_discord_ids']:
+                try:
+                    message += f'\nPlease contact the following maintainers/administrators:'
+                    for maintainer in global_config['seedbot']['maintainer_discord_ids']:
+                        message += f'\n<@{maintainer}>'
+                except Exception as e:
+                    self.logger.error(f'Failed to get maintainers from configuration: {e}')
+            message += f'\nThe following might help determine what the problem is:'
+            message += f'\n`{error}`'
+            await ctx.respond(message, ephemeral=True)
             raise error
     
     def cog_unload(self):

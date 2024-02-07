@@ -1,5 +1,7 @@
 [seedbot]
 log_level = "DEBUG"
+error_message = "Whoops! an internal error occurred and I couldn't complete the request."
+maintainer_discord_ids = ["DISCORD_ID1", "DISCORD_ID2"]
 
 [discord]
 discord_token = "DISCORD_TOKEN"
