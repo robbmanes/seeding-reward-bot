@@ -150,7 +150,7 @@ class HLL_RCON_Client(object):
             '%s/api/do_remove_vip' % (rcon_server_url),
             json={
                 'name': name,
-                'steam_id_64': int(steam_id_64),
+                'steam_id_64': steam_id_64,
             }
         )
         result = response.json()
@@ -174,7 +174,7 @@ class HLL_RCON_Client(object):
             # Work around for https://github.com/MarechJ/hll_rcon_tool/issues/248
             # We need to verify numerical input
             try:
-                if int(vip['steam_id_64']) == steam_id_64:
+                if vip['steam_id_64'] == steam_id_64:
                     return vip
             except ValueError as e:
                 self.logger.error(f'Improper steam ID for VIP entry from RCON: {e}')
