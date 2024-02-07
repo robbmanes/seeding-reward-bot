@@ -14,6 +14,7 @@ class BotCommands(commands.Cog):
     """
 
     hll = SlashCommandGroup('hll')
+    hll_admin = SlashCommandGroup('hll-admin')
 
     def __init__(self, bot):
         self.bot = bot
@@ -212,6 +213,80 @@ class BotCommands(commands.Cog):
                     await ctx.respond(message, ephemeral=True)
                     return
     
+    @hll_admin.command()
+    async def grant_seeder_time(self,
+                            ctx: discord.ApplicationContext,
+                            user: Option(
+                                discord.Member,
+                                "Discord user to grant seeder time to",
+                                required=True,
+                            ),
+                            hours: Option(
+                                int,
+                                'Hours of banked seeding time to grant the user',
+                                required=True,
+                            )
+    ):
+        """Admin-only command to grant user banked seeding time.  The user still must redeem the time."""
+        await ctx.defer(ephemeral=True)
+        player = await get_player_by_discord_id(user.id)
+        if player is None:
+            await ctx.respond(f'User {user} ({user.id}) ID doesn\'t match any known `steam64id`. Inform them to use `/hll register` to tie their ID to their discord.', ephemeral=True)
+            return
+        self.logger.info(f'User \"{player.discord_id}/{player.steam_id_64}\" is being granted {hours} seeder hours by discord user {ctx.author.mention}.')
+
+        old_seed_balance = player.seeding_time_balance
+        player.seeding_time_balance += timedelta(hours=hours)
+        await player.save()
+        
+        message = f'Successfully granted {hours} hours to seeder.'
+        message = f'Previous seeding balance was `{old_seed_balance}`.'
+        message += f'User {user}\'s seeder balance is now `{player.seeding_time_balance}` hour(s).'
+        await ctx.respond(message, ephemeral=True)
+        return
+    
+    @hll_admin.command()
+    async def check_user(self,
+                        ctx: discord.ApplicationContext,
+                        user: Option(
+                            discord.Member,
+                            "Discord user to get information about",
+                            required=True,
+                        )
+    ):
+        "Admin-only command to check a user's VIP and seeding time."
+        await ctx.defer(ephemeral=True)
+        player = await get_player_by_discord_id(user.id)
+        if player is None:
+            await ctx.respond(f'No information in database for user {user} ({user.id}) via `steam64id`. Inform them to use `/hll register` to tie their ID to their discord.', ephemeral=True)
+            return
+        self.logger.debug(f'User {ctx.author.mention} is inspecting player data for \"{player.discord_id}/{player.steam_id_64}\"')
+
+        # TODO: Merge this into a method with "grant"
+        vip_dict = await self.client.get_vip(player.steam_id_64)
+        vip_entries = []
+        for key, vip in vip_dict.items():
+            vip_entries.append(vip)
+        if all(val != vip_entries[0] for val in vip_entries):
+            # VIP from all RCON's didn't match, notify.
+            await ctx.respond(f'{ctx.author.mention}: VIP status is different between servers for user {user}/{user.id}, please contact an admin.', ephemeral=True)
+            return
+        
+        vip = vip_entries.pop()
+
+        message = f'Data for user "<@{user}>/{user.id}\"'
+        if vip is None or vip['vip_expiration'] == None:
+            message += f'\nVIP expiration: user has no active VIP via the RCON server.'
+        else:
+            expiration = rcon_time_str_to_datetime(vip['vip_expiration'])
+            message += f'\nVIP expiration: <t:{int(expiration.timestamp())}:R>'
+        message += f'\nDatabase player name: `{player.player_name}`'
+        message += f'\nLast time seeded: <t:{int(player.last_seed_check.timestamp())}:R>'
+        message += f'\nCurrent seeding balance (H:M:S): `{player.seeding_time_balance}`'
+        message += f'\nTotal seeding time: `{player.total_seeding_time}`'
+        await ctx.respond(message, ephemeral=True)
+        return
+    
     @commands.Cog.listener()
     async def on_application_command_error(
         self, ctx: discord.ApplicationContext, error: discord.DiscordException):
@@ -235,6 +310,7 @@ class BotCommands(commands.Cog):
     
     def cog_unload(self):
         pass
+
 
 def setup(bot):
     bot.add_cog(BotCommands(bot))
