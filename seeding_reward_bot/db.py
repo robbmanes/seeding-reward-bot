@@ -9,7 +9,7 @@ class SeedDatabase(Tortoise):
     Only supports postgresql, and self-generates configuration and initialization.
     """
 
-    models = ['aerich.models', 'seedbot.db']
+    models = ['aerich.models', 'seeding_reward_bot.db']
 
     def __init__(self, event_loop):
         super().__init__()
