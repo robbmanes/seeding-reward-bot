@@ -8,6 +8,10 @@ from seeding_reward_bot.db import HLL_Player, get_player_by_discord_id
 from seeding_reward_bot.hll_rcon_client import HLL_RCON_Client, rcon_time_str_to_datetime
 import logging
 
+def timedelta_to_hours(duration: timedelta):
+    seconds = duration.total_seconds()
+    return seconds // 3600
+
 class BotCommands(commands.Cog):
     """
     Cog to manage discord interactions.
@@ -83,7 +87,7 @@ class BotCommands(commands.Cog):
         player = query_result[0]
         message = f'Seeding stats for {ctx.author.mention}:'
         message += f'\n 🌱 Total seeding time (hours): `{player.total_seeding_time}`'
-        message += f'\n 🏦 Unspent seeding time balance (hours): `{player.seeding_time_balance}`'
+        message += f'\n 🏦 Unspent seeding time balance (hours): `%d`' % timedelta_to_hours(player.seeding_time_balance)
         message += f'\n 🕰️ Last seeding time: <t:{int(player.last_seed_check.timestamp())}:R>'
         seeder_vip_reward_hours = global_config['hell_let_loose']['seeder_vip_reward_hours']
         message += f'\n ℹ️ Turn your seeding hours into VIP time with `/hll claim`. One hour of seeding = {seeder_vip_reward_hours} hour(s) of VIP.'
@@ -157,9 +161,9 @@ class BotCommands(commands.Cog):
                 await ctx.respond(message, ephemeral=True)
                 return
             else:
-                self.logger.debug(f'User \"{ctx.author.name}/{player.steam_id_64}\" is attempting to claim {hours} seeder hours from their total of {player.seeding_time_balance}.')
-                if hours > player.seeding_time_balance.seconds // 3600:
-                    await ctx.respond(f'{ctx.author.mention}: ❌ Sorry, not enough banked time to claim `{hours}` hour(s) of VIP (Currently have `{player.seeding_time_balance.seconds // 3600}` banked hours).', ephemeral=True)
+                self.logger.debug(f'User \"{ctx.author.name}/{player.steam_id_64}\" is attempting to claim {hours} seeder hours from their total of %d' % timedelta_to_hours(player.seeding_time_balance))
+                if hours > timedelta_to_hours(player.seeding_time_balance):
+                    await ctx.respond(f'{ctx.author.mention}: ❌ Sorry, not enough banked time to claim `{hours}` hour(s) of VIP (Currently have `%d` banked hours).' % timedelta_to_hours(player.seeding_time_balance), ephemeral=True)
                     return
                 else:
 
@@ -207,7 +211,7 @@ class BotCommands(commands.Cog):
                         message += f'{ctx.author.mention}: You\'ve added `{grant_value}` hour(s) to your VIP status.'
                         message += f'\nYour VIP expires <t:{int(expiration.timestamp())}:R>'
 
-                    message += f'\nYour remaining seeder balance is `{player.seeding_time_balance}` hour(s).'
+                    message += f'\nYour remaining seeder balance is `%d` hour(s).' % timedelta_to_hours(player.seeding_time_balance)
                     message += f'\n💗 Thanks for seeding! 💗'
                     await player.save()
                     await ctx.respond(message, ephemeral=True)
@@ -241,7 +245,7 @@ class BotCommands(commands.Cog):
         
         message = f'Successfully granted {hours} hours to seeder.'
         message = f'Previous seeding balance was `{old_seed_balance}`.'
-        message += f'User {user}\'s seeder balance is now `{player.seeding_time_balance}` hour(s).'
+        message += f'User {user}\'s seeder balance is now `%d` hour(s).' % timedelta_to_hours(player.seeding_time_balance)
         await ctx.respond(message, ephemeral=True)
         return
     
@@ -282,7 +286,7 @@ class BotCommands(commands.Cog):
             message += f'\nVIP expiration: <t:{int(expiration.timestamp())}:R>'
         message += f'\nDatabase player name: `{player.player_name}`'
         message += f'\nLast time seeded: <t:{int(player.last_seed_check.timestamp())}:R>'
-        message += f'\nCurrent seeding balance (H:M:S): `{player.seeding_time_balance}`'
+        message += f'\nCurrent seeding balance (hours): `%d`' % timedelta_to_hours(player.seeding_time_balance)
         message += f'\nTotal seeding time: `{player.total_seeding_time}`'
         await ctx.respond(message, ephemeral=True)
         return
