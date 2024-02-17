@@ -43,6 +43,8 @@ class HLL_RCON_Client(object):
     so long as you want their data to match and sync.
     """
 
+    global_timeout = httpx.Timeout(15.0, read=None)
+
     def __init__(self):
         self.logger = logging.getLogger(__name__)
 
@@ -108,6 +110,7 @@ class HLL_RCON_Client(object):
                     'username': global_config['hell_let_loose']['rcon_user'],
                     'password': global_config['hell_let_loose']['rcon_password'],
                 },
+                timeout=self.global_timeout,
             )
             r = response.json()
             if r['failed'] is False:
@@ -133,7 +136,8 @@ class HLL_RCON_Client(object):
                 'name': name,
                 'steam_id_64': str(steam_id_64),
                 'expiration': expiration,
-            }
+            },
+            timeout=self.global_timeout,
         )
         result = response.json()
         if result['result'] == 'SUCCESS':
@@ -151,7 +155,8 @@ class HLL_RCON_Client(object):
             json={
                 'name': name,
                 'steam_id_64': steam_id_64,
-            }
+            },
+            timeout=self.global_timeout,
         )
         result = response.json()
         if result['result'] == 'SUCCESS':
@@ -167,7 +172,7 @@ class HLL_RCON_Client(object):
         Queries the RCON server for all VIP's, and returns a single VIP object
         based on the input steam64id.
         """
-        response = await client.get('%s/api/get_vip_ids' % (rcon_server_url))
+        response = await client.get('%s/api/get_vip_ids' % (rcon_server_url), timeout=self.global_timeout)
         result = response.json()
         vip_list = result['result']
         for vip in vip_list:
@@ -193,7 +198,8 @@ class HLL_RCON_Client(object):
             '%s/api/get_recent_logs' % (rcon_server_url),
             json={
                 'since_min_ago': since_min_ago
-            }
+            },
+            timeout=self.global_timeout,
         )
         result = response.json()
 
@@ -226,6 +232,7 @@ class HLL_RCON_Client(object):
             json={
                 'since_min_ago': since_min_ago
             }
+            timeout=self.global_timeout,
         )
         logs = response.json()
 
@@ -250,7 +257,8 @@ class HLL_RCON_Client(object):
             '%s/api/get_structured_logs' % (rcon_server_url),
             json={
                 'since_min_ago': global_config['hell_let_loose']['max_log_parse_mins']
-            }
+            },
+            timeout=self.global_timeout,
         )
         # We have to assume the player name can change, so ensure we only search for steamID's
         unfiltered_logs = response.json()
@@ -266,7 +274,7 @@ class HLL_RCON_Client(object):
         """
         Queries the RCON server(s) for a list of players.
         """
-        response = await client.get('%s/api/get_players' % (rcon_server_url))
+        response = await client.get('%s/api/get_players' % (rcon_server_url), timeout=self.global_timeout)
         player_list = response.json()
         return player_list['result']
     
@@ -304,7 +312,8 @@ class HLL_RCON_Client(object):
             json={
                 'steam_id_64': steam_id_64,
                 'message': message,
-            }
+            },
+            timeout=self.global_timeout,
         )
         result = response.json()
         if result['result'] == 'SUCCESS':
