@@ -231,7 +231,7 @@ class HLL_RCON_Client(object):
             '%s/api/get_recent_logs' % (rcon_server_url),
             json={
                 'since_min_ago': since_min_ago
-            }
+            },
             timeout=self.global_timeout,
         )
         logs = response.json()
