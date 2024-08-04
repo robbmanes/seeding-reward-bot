@@ -262,6 +262,7 @@ class BotCommands(commands.Cog):
                 receiver.seeding_time_balance += timedelta(hours=hours)
                 gifter.seeding_time_balance -= timedelta(hours=hours)
 
+                message = ''
                 message += f'{ctx.author.mention}: You\'ve added `{hours}` hour(s) to {receiver_discord_user}\'s seeding bank.'
                 message += f'\nYour remaining seeder balance is `%d` hour(s).' % timedelta_to_hours(gifter.seeding_time_balance)
                 message += f'\n💗 Thanks for seeding! 💗'
