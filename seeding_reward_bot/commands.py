@@ -257,7 +257,7 @@ class BotCommands(commands.Cog):
                 await ctx.respond(f'{ctx.author.mention}: ❌ Sorry, not enough banked time to claim `{hours}` hour(s) of VIP (Currently have `%d` banked hours).' % timedelta_to_hours(gifter.seeding_time_balance), ephemeral=True)
                 return
             else:
-                self.logger.info(f'User \"{receiver.discord_id}/{receiver.steam_id_64}\" is being gifted {hours} seeder hours by discord user {ctx.author.mention}.')
+                self.logger.info(f'User \"{receiver}\" is being gifted {hours} seeder hours by discord user {ctx.author.mention}.')
 
                 # Check the previous VIP values from both RCON's to ensure they are identical prior to proceeding
                 vip_dict = await self.client.get_vip(receiver.steam_id_64)
