@@ -137,7 +137,8 @@ class BotCommands(commands.Cog):
         await ctx.respond(f'{ctx.author.mention}: your VIP expires <t:{int(expiration.timestamp())}:R>', ephemeral=True)
 
     @hll.command()
-    async def claim(self, ctx: discord.ApplicationContext, hours: Option(
+    async def claim(self, ctx: discord.ApplicationContext,
+        hours: Option(
             int,
             'Redeem seeding hours for VIP status',
             required=False,
@@ -216,7 +217,93 @@ class BotCommands(commands.Cog):
                     await player.save()
                     await ctx.respond(message, ephemeral=True)
                     return
-    
+
+    @hll.command()
+    async def gift(self, ctx: discord.ApplicationContext,
+        receiver_discord_user: Option(
+            discord.Member,
+            "Discord user to grant VIP hours to",
+            required=True,
+        ),
+        hours: Option(
+            int,
+            'amount of hours to gift',
+            required=False,
+        )
+    ):
+        """Gift VIP to another player"""
+        await ctx.defer(ephemeral=True)
+        if hours is None:
+            vip_value = global_config['hell_let_loose']['seeder_vip_reward_hours']
+            message = f'{ctx.author.mention}:'
+            message += f'\n💵 Use `/hll gift $USER $HOURS` to grant other players seeding hours.'
+            message += f'\n🚜 One hour of seeding time is `{vip_value}` hour(s) of VIP status.'
+            message += f'\nℹ️ Check your seeding hours with `/hll seeder`.'
+            await ctx.respond(message, ephemeral=True)
+            return
+        else:
+            receiver = get_player_by_discord_id(receiver_discord_user.id)
+            if receiver is None:
+                await ctx.respond(f'No information in database for user {receiver_discord_user} ({receiver_discord_user.id}) via `steam64id`. Inform them to use `/hll register` to tie their ID to their discord.', ephemeral=True)
+                return
+            gifter = await get_player_by_discord_id(ctx.author.id)
+            if gifter is None:
+                message = f'{ctx.author.mention}: Can\'t find your ID to claim VIP.'
+                message += f'\nMake sure you have run `/hll register` and registered your Steam and Discord.'
+                await ctx.respond(message, ephemeral=True)
+                return
+            
+            if hours > timedelta_to_hours(gifter.seeding_time_balance):
+                await ctx.respond(f'{ctx.author.mention}: ❌ Sorry, not enough banked time to claim `{hours}` hour(s) of VIP (Currently have `%d` banked hours).' % timedelta_to_hours(gifter.seeding_time_balance), ephemeral=True)
+                return
+            else:
+                self.logger.info(f'User \"{receiver.discord_id}/{receiver.steam_id_64}\" is being gifted {hours} seeder hours by discord user {ctx.author.mention}.')
+
+                # Check the previous VIP values from both RCON's to ensure they are identical prior to proceeding
+                vip_dict = await self.client.get_vip(receiver.steam_id_64)
+                vip_entries = []
+                for key, vip in vip_dict.items():
+                    vip_entries.append(vip)
+                if all(val != vip_entries[0] for val in vip_entries):
+                    # VIP from all RCON's didn't match, notify.
+                    await ctx.respond(f'{ctx.author.mention}: It looks like the gift receiver\'s VIP status is different between servers, please contact an admin.', ephemeral=True)
+                    return
+
+                # All is well, return to the (identical) first in the list
+                vip = vip_entries.pop()
+                
+                grant_value = global_config['hell_let_loose']['seeder_vip_reward_hours'] * hours
+                if vip is None or vip['vip_expiration'] == None:
+                    # !!! vip expiration is in utc...
+                    expiration = datetime.now(timezone.utc) + timedelta(hours=grant_value)
+                else:
+                    # Check if current expiration is in the past.  If it is, set it to current time.
+                    cur_expiration = rcon_time_str_to_datetime(vip['vip_expiration'])
+                    if cur_expiration.timestamp() < datetime.now(timezone.utc).timestamp():
+                        cur_expiration = datetime.now(timezone.utc)
+
+                    expiration = cur_expiration + timedelta(hours=grant_value)
+
+                # Make sure all RCON grants are successful.
+                message = ''
+                result_dict = await self.client.grant_vip(receiver.player_name, receiver.steam_id_64, expiration.strftime('%Y-%m-%dT%H:%M:%S%z'))
+                for rcon, result in result_dict.items():
+                    if result is False:
+                        self.logger.error(f'Problem assigning VIP in `claim` for \"{rcon}\": {result}')
+                        await ctx.respond(f'{ctx.author.mention}: There was a problem on one of the servers assigning the VIP.')
+                        return
+
+                # !!! should only decrease banked seeding time if it is actually used...
+                gifter.seeding_time_balance -= timedelta(hours=hours)
+
+                message += f'{ctx.author.mention}: You\'ve added `{grant_value}` hour(s) to {receiver_discord_user}\'s VIP status.'
+                message += f'\nYour remaining seeder balance is `%d` hour(s).' % timedelta_to_hours(gifter.seeding_time_balance)
+                message += f'\n💗 Thanks for seeding! 💗'
+                await gifter.save()
+                await receiver.save()
+                await ctx.respond(message, ephemeral=True)
+                return
+            
     @hll_admin.command()
     async def grant_seeder_time(self,
                             ctx: discord.ApplicationContext,
