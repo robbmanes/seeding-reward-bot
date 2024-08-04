@@ -263,11 +263,15 @@ class BotCommands(commands.Cog):
                 gifter.seeding_time_balance -= timedelta(hours=hours)
 
                 message = ''
-                message += f'{ctx.author.mention}: You\'ve added `{hours}` hour(s) to {receiver_discord_user}\'s seeding bank.'
+                message += f'{ctx.author.mention}: You\'ve added `{hours}` hour(s) to {receiver_discord_user.mention}\'s seeding bank.'
                 message += f'\nYour remaining seeder balance is `%d` hour(s).' % timedelta_to_hours(gifter.seeding_time_balance)
                 message += f'\n💗 Thanks for seeding! 💗'
                 await gifter.save()
                 await receiver.save()
+
+                if ctx.channel is not None:
+                    await ctx.channel.send(f'{ctx.author.mention} just gifted `{hours}` of VIP seeding time to {receiver_discord_user.mention}!  Use `/hll seeder` to check your balance.')
+                    
                 await ctx.respond(message, ephemeral=True)
                 return
             
