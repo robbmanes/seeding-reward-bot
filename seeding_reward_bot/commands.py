@@ -259,44 +259,10 @@ class BotCommands(commands.Cog):
             else:
                 self.logger.info(f'User \"{receiver}\" is being gifted {hours} seeder hours by discord user {ctx.author.mention}.')
 
-                # Check the previous VIP values from both RCON's to ensure they are identical prior to proceeding
-                vip_dict = await self.client.get_vip(receiver.steam_id_64)
-                vip_entries = []
-                for key, vip in vip_dict.items():
-                    vip_entries.append(vip)
-                if all(val != vip_entries[0] for val in vip_entries):
-                    # VIP from all RCON's didn't match, notify.
-                    await ctx.respond(f'{ctx.author.mention}: It looks like the gift receiver\'s VIP status is different between servers, please contact an admin.', ephemeral=True)
-                    return
-
-                # All is well, return to the (identical) first in the list
-                vip = vip_entries.pop()
-                
-                grant_value = global_config['hell_let_loose']['seeder_vip_reward_hours'] * hours
-                if vip is None or vip['vip_expiration'] == None:
-                    # !!! vip expiration is in utc...
-                    expiration = datetime.now(timezone.utc) + timedelta(hours=grant_value)
-                else:
-                    # Check if current expiration is in the past.  If it is, set it to current time.
-                    cur_expiration = rcon_time_str_to_datetime(vip['vip_expiration'])
-                    if cur_expiration.timestamp() < datetime.now(timezone.utc).timestamp():
-                        cur_expiration = datetime.now(timezone.utc)
-
-                    expiration = cur_expiration + timedelta(hours=grant_value)
-
-                # Make sure all RCON grants are successful.
-                message = ''
-                result_dict = await self.client.grant_vip(receiver.player_name, receiver.steam_id_64, expiration.strftime('%Y-%m-%dT%H:%M:%S%z'))
-                for rcon, result in result_dict.items():
-                    if result is False:
-                        self.logger.error(f'Problem assigning VIP in `claim` for \"{rcon}\": {result}')
-                        await ctx.respond(f'{ctx.author.mention}: There was a problem on one of the servers assigning the VIP.')
-                        return
-
-                # !!! should only decrease banked seeding time if it is actually used...
+                receiver.seeding_time_balance += timedelta(hours=hours)
                 gifter.seeding_time_balance -= timedelta(hours=hours)
 
-                message += f'{ctx.author.mention}: You\'ve added `{grant_value}` hour(s) to {receiver_discord_user}\'s VIP status.'
+                message += f'{ctx.author.mention}: You\'ve added `{hours}` hour(s) to {receiver_discord_user}\'s seeding bank.'
                 message += f'\nYour remaining seeder balance is `%d` hour(s).' % timedelta_to_hours(gifter.seeding_time_balance)
                 message += f'\n💗 Thanks for seeding! 💗'
                 await gifter.save()
