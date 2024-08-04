@@ -242,7 +242,7 @@ class BotCommands(commands.Cog):
             await ctx.respond(message, ephemeral=True)
             return
         else:
-            receiver = get_player_by_discord_id(receiver_discord_user.id)
+            receiver = await get_player_by_discord_id(receiver_discord_user.id)
             if receiver is None:
                 await ctx.respond(f'No information in database for user {receiver_discord_user} ({receiver_discord_user.id}) via `steam64id`. Inform them to use `/hll register` to tie their ID to their discord.', ephemeral=True)
                 return
