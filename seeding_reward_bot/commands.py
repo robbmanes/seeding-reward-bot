@@ -270,8 +270,8 @@ class BotCommands(commands.Cog):
                 await receiver.save()
 
                 if ctx.channel is not None:
-                    await ctx.channel.send(f'{ctx.author.mention} just gifted `{hours}` of VIP seeding time to {receiver_discord_user.mention}!  Use `/hll seeder` to check your balance.')
-                    
+                    await ctx.channel.send(f'{ctx.author.mention} just gifted `{hours}` hours of VIP seeding time to {receiver_discord_user.mention}!  Use `/hll seeder` to check your balance.')
+
                 await ctx.respond(message, ephemeral=True)
                 return
             
