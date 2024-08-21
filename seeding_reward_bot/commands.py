@@ -43,18 +43,9 @@ class BotCommands(commands.Cog):
             await ctx.respond(f'Found multiple players with that `steam64id` - that shouldn\'t happen! Please contact an administrator.', ephemeral=True)
             return
         elif len(query_result) == 0:
-            # No entry found, make a new one
-            player = HLL_Player(
-                steam_id_64=steam64,
-                player_name=ctx.author.name,
-                discord_id=ctx.author.id,
-                seeding_time_balance=timedelta(minutes=0),
-                total_seeding_time=timedelta(minutes=0),
-                last_seed_check=datetime.now(timezone.utc),
-            )
-            self.logger.debug(f'Discord user {ctx.author.name} is registering steam64id `{steam64}` to {player.discord_id}')
-            await player.save()
-            await ctx.respond(f'{ctx.author.mention}: I\'ve registered your `steam64id` to your Discord account. Thanks!', ephemeral=True)
+            # No entry found, provide an error message and instructions to play first
+            self.logger.debug(f'Discord user {ctx.author.name}/{player.discord_id} attempted to register steam64id `{steam64}`, denied due to no record')
+            await ctx.respond(f'{ctx.author.mention}: I don\'t see a record for that ID; please make sure you have seeded on our servers previously and enter your Steam64ID (https://steamid.io/lookup) to register.  Please open a ticket for additional help.', ephemeral=True)
             return
         elif len(query_result) == 1:
             # Found one existing entry
