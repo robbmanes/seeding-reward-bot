@@ -131,10 +131,10 @@ class HLL_RCON_Client(object):
         Returns True for success, False for failure.
         """
         response = await client.post(
-            '%s/api/do_add_vip' % (rcon_server_url),
+            '%s/api/add_vip' % (rcon_server_url),
             json={
-                'name': name,
-                'steam_id_64': str(steam_id_64),
+                'description': name,
+                'player_id': str(steam_id_64),
                 'expiration': expiration,
             },
             timeout=self.global_timeout,
@@ -151,10 +151,9 @@ class HLL_RCON_Client(object):
     async def revoke_vip(self, rcon_server_url, client, name, steam_id_64):
         """Completely remove a VIP entry from the RCON instances."""
         response = await client.post(
-            '%s/api/do_remove_vip' % (rcon_server_url),
+            '%s/api/remove_vip' % (rcon_server_url),
             json={
-                'name': name,
-                'steam_id_64': steam_id_64,
+                'player_id': steam_id_64,
             },
             timeout=self.global_timeout,
         )
@@ -179,7 +178,7 @@ class HLL_RCON_Client(object):
             # Work around for https://github.com/MarechJ/hll_rcon_tool/issues/248
             # We need to verify numerical input
             try:
-                if vip['steam_id_64'] == steam_id_64:
+                if vip['player_id'] == steam_id_64:
                     return vip
             except ValueError as e:
                 self.logger.error(f'Improper steam ID for VIP entry from RCON: {e}')
@@ -264,7 +263,7 @@ class HLL_RCON_Client(object):
         unfiltered_logs = response.json()
         player_logs = []
         for log in unfiltered_logs['result']['logs']:
-            if log['steam_id_64_1'] == steam_id_64 or log['steam_id_64_2'] == steam_id_64:
+            if log['player_id_1'] == steam_id_64 or log['player_id_2'] == steam_id_64:
                 player_logs.append(log)
         
         return player_logs
@@ -308,9 +307,9 @@ class HLL_RCON_Client(object):
             return True
 
         response = await client.post(
-            '%s/api/do_message_player' % (rcon_server_url),
+            '%s/api/message_player' % (rcon_server_url),
             json={
-                'steam_id_64': steam_id_64,
+                'player_id': steam_id_64,
                 'message': message,
             },
             timeout=self.global_timeout,

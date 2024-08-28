@@ -44,7 +44,7 @@ class BotCommands(commands.Cog):
             return
         elif len(query_result) == 0:
             # No entry found, provide an error message and instructions to play first
-            self.logger.debug(f'Discord user {ctx.author.name}/{player.discord_id} attempted to register steam64id `{steam64}`, denied due to no record')
+            self.logger.debug(f'Discord user {ctx.author.name} attempted to register steam64id `{steam64}`, denied due to no record')
             await ctx.respond(f'{ctx.author.mention}: I don\'t see a record for that ID; please make sure you have seeded on our servers previously and enter your Steam64ID (https://steamid.io/lookup) to register.  Please open a ticket for additional help.', ephemeral=True)
             return
         elif len(query_result) == 1:
