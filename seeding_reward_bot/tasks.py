@@ -75,9 +75,9 @@ class BotTasks(commands.Cog):
 
                 # Iterate through current players and accumulate their seeding time
                 for player in player_list:
-                    seeder_query = await HLL_Player.filter(steam_id_64__contains=player['[player_id]'])
+                    seeder_query = await HLL_Player.filter(steam_id_64__contains=player['player_id'])
                     player_name = player['name']
-                    steam_id_64 = player['[player_id]']
+                    steam_id_64 = player['player_id']
                     if not seeder_query:
                         # New seeder, make a record
                         self.logger.debug(f'Generating new seeder record for \"{player_name}/{steam_id_64}\"')
