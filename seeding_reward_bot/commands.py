@@ -192,7 +192,7 @@ class BotCommands(commands.Cog):
                         # Make sure all RCON grants are successful.
                         result_dict = await self.client.grant_vip(player.player_name, player.steam_id_64, expiration.strftime('%Y-%m-%dT%H:%M:%S%z'))
                         for rcon, result in result_dict.items():
-                            if result['result'] is False:
+                            if result is False:
                                 self.logger.error(f'Problem assigning VIP in `claim` for \"{rcon}\": {result}')
                                 await ctx.respond(f'{ctx.author.mention}: There was a problem on one of the servers assigning your VIP.')
                                 return
