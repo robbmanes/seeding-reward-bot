@@ -140,7 +140,7 @@ class HLL_RCON_Client(object):
             timeout=self.global_timeout,
         )
         result = response.json()
-        if result['result'] == 'SUCCESS':
+        if result['failed'] is False:
             self.logger.debug(f'Granted VIP to user \"{name}/{steam_id_64}\", expiration {expiration}')
             return True
         else:

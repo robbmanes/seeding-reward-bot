@@ -63,21 +63,25 @@ class BotTasks(commands.Cog):
 
         # Run once per RCON:
         for rcon_server_url in result.keys():
+            self.logger.debug(f'Processing seeding player list for \"{rcon_server_url}\"...')
             player_list = result[rcon_server_url]
 
             # Check if the player list is empty. If it is, skip it.
             if player_list == None:
+                self.logger.info(f'No players on \"{rcon_server_url}\", skipping.')
                 continue
 
             # Check if player count is below seeding threshold
             if len(player_list) < global_config['hell_let_loose']['seeding_threshold']:
-                self.logger.debug(f'Server \"{rcon_server_url}\" qualifies for seeding status at this time.')
+                self.logger.info(f'Server \"{rcon_server_url}\" qualifies for seeding status at this time.')
+                self.logger.debug(f'Returned player list for \"{rcon_server_url}\" is \"{player_list}\"')
 
                 # Iterate through current players and accumulate their seeding time
                 for player in player_list:
-                    seeder_query = await HLL_Player.filter(steam_id_64__contains=player['player_id'])
                     player_name = player['name']
                     steam_id_64 = player['player_id']
+                    self.logger.debug(f'Processing seeding record for player \"{player_name}/{steam_id_64}\"')
+                    seeder_query = await HLL_Player.filter(steam_id_64__contains=player['player_id'])
                     if not seeder_query:
                         # New seeder, make a record
                         self.logger.debug(f'Generating new seeder record for \"{player_name}/{steam_id_64}\"')
@@ -123,6 +127,8 @@ class BotTasks(commands.Cog):
                             )
                             if not msg_result:
                                 self.logger.error(f'Failed to send seeder reward message to player \"{seeder.steam_id_64}\"')
+                        else:
+                            self.logger.debug(f'Player \"{seeder.player_name}/{seeder.steam_id_64}\" did not qualify to have their record updated.')
 
                 self.logger.debug(f'Seeder status updated for server \"{rcon_server_url}\"')
             else:
