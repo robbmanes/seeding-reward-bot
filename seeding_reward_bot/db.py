@@ -1,7 +1,10 @@
-from seeding_reward_bot.config import global_config
 import logging
+
 from tortoise import Tortoise, fields
 from tortoise.models import Model
+
+from seeding_reward_bot.config import global_config
+
 
 class SeedDatabase(Tortoise):
     """
@@ -17,7 +20,7 @@ class SeedDatabase(Tortoise):
         self.logger = logging.getLogger(__package__)
         self.db_config = self.generate_db_config()
 
-        self.logger.info("Loading ORM for models: %s" % (self.models))
+        self.logger.info(f"Loading ORM for models: {self.models}")
         event_loop.run_until_complete(Tortoise.init(config=self.db_config))
         event_loop.run_until_complete(Tortoise.generate_schemas())
 
@@ -45,26 +48,29 @@ class SeedDatabase(Tortoise):
 
         return db_config
 
-async def get_player_by_discord_id(id):
+
+async def get_player_by_discord_id(discord_id):
     """
     Performs a lookup for a user based on their steam_64_id <=> discord_id.
     If no result, None is returned indicating the user has no entry or hasn't registered.
     """
-    query_set = await HLL_Player.filter(discord_id__contains=id)
+    query_set = await HLL_Player.filter(discord_id__contains=discord_id)
     if len(query_set) == 0:
         return None
     elif len(query_set) != 1:
-        self.logger.fatal("Multiple discord_id's found for %s!" % (id))
+        self.logger.fatal("Multiple discord_id's found for {discord_id}!")
         raise
     else:
         return query_set[0]
+
 
 class HLL_Player(Model):
     """
     Model representing a player <=> discord relationship.
     """
+
     steam_id_64 = fields.TextField(description='Steam64Id for the player')
-    player_name = fields.TextField(description='Player\'s stored name', null=True)
+    player_name = fields.TextField(description="Player's stored name", null=True)
     discord_id = fields.TextField(description='Discord ID for player', null=True)
     seeding_time_balance = fields.TimeDeltaField(description='Amount of unspent seeding hours')
     total_seeding_time = fields.TimeDeltaField(description='Total amount of time player has spent seeding')

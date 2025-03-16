@@ -10,11 +10,6 @@ from seeding_reward_bot.config import global_config
 from seeding_reward_bot.db import HLL_Player, get_player_by_discord_id
 
 
-def timedelta_to_hours(duration: timedelta):
-    seconds = duration.total_seconds()
-    return seconds // 3600
-
-
 class BotCommands(commands.Cog):
     """
     Cog to manage discord interactions.
@@ -43,12 +38,12 @@ class BotCommands(commands.Cog):
         query_result = await HLL_Player.filter(steam_id_64=player_id)
         if len(query_result) > 1:
             self.logger.error('Player lookup during player_id returned multiple results:')
-            await ctx.respond(f'Found multiple players with that `player_id` - that shouldn\'t happen! Please contact an administrator.', ephemeral=True)
+            await ctx.respond(f"Found multiple players with that `player_id` - that shouldn't happen! Please contact an administrator.", ephemeral=True)
             return
         elif len(query_result) == 0:
             # No entry found, provide an error message and instructions to play first
             self.logger.debug(f'Discord user {ctx.author.name} attempted to register player_id `{player_id}`, denied due to no record')
-            await ctx.respond(f'{ctx.author.mention}: I don\'t see a record for that ID; please make sure you have seeded on our servers previously and enter your Player ID (found in the top right of OPTIONS in game) to register.  Please open a ticket for additional help.', ephemeral=True)
+            await ctx.respond(f"{ctx.author.mention}: I don't see a record for that ID; please make sure you have seeded on our servers previously and enter your Player ID (found in the top right of OPTIONS in game) to register.  Please open a ticket for additional help.", ephemeral=True)
             return
         elif len(query_result) == 1:
             # Found one existing entry
@@ -57,7 +52,7 @@ class BotCommands(commands.Cog):
                 player.discord_id = ctx.author.id
                 await player.save()
                 self.logger.debug(f'Updated user {ctx.author.mention} with player_id `{player_id}`')
-                await ctx.respond(f'{ctx.author.mention}: I\'ve registered your `player_id` to your Discord account. Thanks!', ephemeral=True)
+                await ctx.respond(f"{ctx.author.mention}: I've registered your `player_id` to your Discord account. Thanks!", ephemeral=True)
                 return
             elif player.discord_id == ctx.author.id:
                 await ctx.respond(f'That `player_id` is already registered to you!', ephemeral=True)
@@ -68,7 +63,7 @@ class BotCommands(commands.Cog):
                 return
         else:
             raise
-    
+
     @hll.command()
     async def seeder(self, ctx: discord.ApplicationContext):
         """Check your seeding statistics"""
@@ -76,15 +71,14 @@ class BotCommands(commands.Cog):
         await ctx.defer(ephemeral=True)
         query_result = await HLL_Player.filter(discord_id=ctx.author.id)
         if len(query_result) == 0:
-            await ctx.respond(f'Your Discord ID doesn\'t match any known `player_id`. Use `/hll register` to tie your ID to your discord.', ephemeral=True)
+            await ctx.respond(f"Your Discord ID doesn't match any known `player_id`. Use `/hll register` to tie your ID to your discord.", ephemeral=True)
             return
         player = query_result[0]
         message = f'Seeding stats for {ctx.author.mention}:'
         message += f'\n 🌱 Total seeding time (hours): `{player.total_seeding_time}`'
-        message += f'\n 🏦 Unspent seeding time balance (hours): `%d`' % timedelta_to_hours(player.seeding_time_balance)
+        message += f'\n 🏦 Unspent seeding time balance (hours): `{player.seeding_time_balance//timedelta(hours=1):,}`'
         message += f'\n 🕰️ Last seeding time: <t:{int(player.last_seed_check.timestamp())}:R>'
-        seeder_vip_reward_hours = global_config['hell_let_loose']['seeder_vip_reward_hours']
-        message += f'\n ℹ️ Turn your seeding hours into VIP time with `/hll claim`. One hour of seeding = {seeder_vip_reward_hours} hour(s) of VIP.'
+        message += f"\n ℹ️ Turn your seeding hours into VIP time with `/hll claim`. One hour of seeding = {global_config['hell_let_loose']['seeder_vip_reward_hours']} hour(s) of VIP."
         await ctx.respond(message, ephemeral=True)
 
     @hll.command()
@@ -95,7 +89,7 @@ class BotCommands(commands.Cog):
         self.logger.debug(f'VIP query for `{ctx.author.id}/{ctx.author.name}`.')
         player = await get_player_by_discord_id(ctx.author.id)
         if player is None:
-            await ctx.respond(f'Your Discord ID doesn\'t match any known `player_id`. Use `/hll register` to tie your ID to your discord.', ephemeral=True)
+            await ctx.respond(f"Your Discord ID doesn't match any known `player_id`. Use `/hll register` to tie your ID to your discord.", ephemeral=True)
             return
 
         # We need to ensure we get the same VIP states for both RCON's.
@@ -159,14 +153,22 @@ class BotCommands(commands.Cog):
         else:
             player = await get_player_by_discord_id(ctx.author.id)
             if player is None:
-                message = f'{ctx.author.mention}: Can\'t find your ID to claim VIP.'
+                message = f"{ctx.author.mention}: Can't find your ID to claim VIP."
                 message += f'\nMake sure you have run `/hll register` and registered your Steam and Discord.'
                 await ctx.respond(message, ephemeral=True)
                 return
             else:
-                self.logger.debug(f'User \"{ctx.author.name}/{player.steam_id_64}\" is attempting to claim {hours} seeder hours from their total of %d' % timedelta_to_hours(player.seeding_time_balance))
-                if hours > timedelta_to_hours(player.seeding_time_balance):
-                    await ctx.respond(f'{ctx.author.mention}: ❌ Sorry, not enough banked time to claim `{hours}` hour(s) of VIP (Currently have `%d` banked hours).' % timedelta_to_hours(player.seeding_time_balance), ephemeral=True)
+                player_seeding_time_hours = player.seeding_time_balance // timedelta(
+                    hours=1
+                )
+                self.logger.debug(
+                    f'User "{ctx.author.name}/{player.steam_id_64}" is attempting to claim {hours} seeder hours from their total of {player_seeding_time_hours:,}'
+                )
+                if hours > player_seeding_time_hours:
+                    await ctx.respond(
+                        f"{ctx.author.mention}: ❌ Sorry, not enough banked time to claim `{hours}` hour(s) of VIP (Currently have `{player_seeding_time_hours:,}` banked hours).",
+                        ephemeral=True,
+                    )
                     return
                 else:
 
@@ -213,17 +215,17 @@ class BotCommands(commands.Cog):
                         )
                         for rcon, result in result_dict.items():
                             if result is False:
-                                self.logger.error(f'Problem assigning VIP in `claim` for \"{rcon}\": {result}')
+                                self.logger.error(f'Problem assigning VIP in `claim` for "{rcon}": {result}')
                                 await ctx.respond(f'{ctx.author.mention}: There was a problem on one of the servers assigning your VIP.')
                                 return
 
                         # !!! should only decrease banked seeding time if it is actually used...
                         player.seeding_time_balance -= timedelta(hours=hours)
 
-                        message += f'{ctx.author.mention}: You\'ve added `{grant_value}` hour(s) to your VIP status.'
+                        message += f"{ctx.author.mention}: You've added `{grant_value}` hour(s) to your VIP status."
                         message += f'\nYour VIP expires <t:{int(expiration.timestamp())}:R>'
 
-                    message += f'\nYour remaining seeder balance is `%d` hour(s).' % timedelta_to_hours(player.seeding_time_balance)
+                    message += f'\nYour remaining seeder balance is `{player.seeding_time_balance//timedelta(hours=1):,}` hour(s).'
                     message += f'\n💗 Thanks for seeding! 💗'
                     await player.save()
                     await ctx.respond(message, ephemeral=True)
@@ -257,27 +259,33 @@ class BotCommands(commands.Cog):
         else:
             receiver = await get_player_by_discord_id(receiver_discord_user.id)
             if receiver is None:
-                await ctx.respond(f'No information in database for user {receiver_discord_user} ({receiver_discord_user.id}) via `steam64id`. Inform them to use `/hll register` to tie their ID to their discord.', ephemeral=True)
+                await ctx.respond(f'No information in database for user {receiver_discord_user} ({receiver_discord_user.id}) via `player_id`. Inform them to use `/hll register` to tie their ID to their discord.', ephemeral=True)
                 return
             gifter = await get_player_by_discord_id(ctx.author.id)
             if gifter is None:
-                message = f'{ctx.author.mention}: Can\'t find your ID to claim VIP.'
+                message = f"{ctx.author.mention}: Can't find your ID to claim VIP."
                 message += f'\nMake sure you have run `/hll register` and registered your Steam and Discord.'
                 await ctx.respond(message, ephemeral=True)
                 return
 
-            if hours > timedelta_to_hours(gifter.seeding_time_balance):
-                await ctx.respond(f'{ctx.author.mention}: ❌ Sorry, not enough banked time to claim `{hours}` hour(s) of VIP (Currently have `%d` banked hours).' % timedelta_to_hours(gifter.seeding_time_balance), ephemeral=True)
+            gifter_seeding_time_hours = gifter.seeding_time_balance // timedelta(
+                hours=1
+            )
+            if hours > gifter_seeding_time_hours:
+                await ctx.respond(
+                    f"{ctx.author.mention}: ❌ Sorry, not enough banked time to claim `{hours}` hour(s) of VIP (Currently have `{gifter_seeding_time_hours:,}` banked hours).",
+                    ephemeral=True,
+                )
                 return
             else:
-                self.logger.info(f'User \"{receiver}\" is being gifted {hours} seeder hours by discord user {ctx.author.mention}.')
+                self.logger.info(f'User "{receiver}" is being gifted {hours} seeder hours by discord user {ctx.author.mention}.')
 
                 receiver.seeding_time_balance += timedelta(hours=hours)
                 gifter.seeding_time_balance -= timedelta(hours=hours)
 
                 message = ''
-                message += f'{ctx.author.mention}: You\'ve added `{hours}` hour(s) to {receiver_discord_user.mention}\'s seeding bank.'
-                message += f'\nYour remaining seeder balance is `%d` hour(s).' % timedelta_to_hours(gifter.seeding_time_balance)
+                message += f"{ctx.author.mention}: You've added `{hours}` hour(s) to {receiver_discord_user.mention}'s seeding bank."
+                message += f'\nYour remaining seeder balance is `{gifter.seeding_time_balance//timedelta(hours=1):,}` hour(s).'
                 message += f'\n💗 Thanks for seeding! 💗'
                 await gifter.save()
                 await receiver.save()
@@ -307,9 +315,9 @@ class BotCommands(commands.Cog):
         await ctx.defer(ephemeral=True)
         player = await get_player_by_discord_id(user.id)
         if player is None:
-            await ctx.respond(f'User {user} ({user.id}) ID doesn\'t match any known `player_id`. Inform them to use `/hll register` to tie their ID to their discord.', ephemeral=True)
+            await ctx.respond(f"User {user} ({user.id}) ID doesn't match any known `player_id`. Inform them to use `/hll register` to tie their ID to their discord.", ephemeral=True)
             return
-        self.logger.info(f'User \"{player.discord_id}/{player.steam_id_64}\" is being granted {hours} seeder hours by discord user {ctx.author.mention}.')
+        self.logger.info(f'User "{player.discord_id}/{player.steam_id_64}" is being granted {hours} seeder hours by discord user {ctx.author.mention}.')
 
         old_seed_balance = player.seeding_time_balance
         player.seeding_time_balance += timedelta(hours=hours)
@@ -317,7 +325,7 @@ class BotCommands(commands.Cog):
         
         message = f'Successfully granted {hours} hours to seeder.'
         message = f'Previous seeding balance was `{old_seed_balance}`.'
-        message += f'User {user}\'s seeder balance is now `%d` hour(s).' % timedelta_to_hours(player.seeding_time_balance)
+        message += f"User {user}'s seeder balance is now `{player.seeding_time_balance//timedelta(hours=1):,}` hour(s)."
         await ctx.respond(message, ephemeral=True)
         return
 
@@ -335,9 +343,9 @@ class BotCommands(commands.Cog):
         await ctx.defer(ephemeral=True)
         player = await get_player_by_discord_id(user.id)
         if player is None:
-            await ctx.respond(f'No information in database for user {user} ({user.id}) via `steam64id`. Inform them to use `/hll register` to tie their ID to their discord.', ephemeral=True)
+            await ctx.respond(f'No information in database for user {user} ({user.id}) via `player_id`. Inform them to use `/hll register` to tie their ID to their discord.', ephemeral=True)
             return
-        self.logger.debug(f'User {ctx.author.mention} is inspecting player data for \"{player.discord_id}/{player.steam_id_64}\"')
+        self.logger.debug(f'User {ctx.author.mention} is inspecting player data for "{player.discord_id}/{player.steam_id_64}"')
 
         # TODO: Merge this into a method with "grant"
         try:
@@ -358,7 +366,7 @@ class BotCommands(commands.Cog):
 
         vip = vip_entries.pop()
 
-        message = f'Data for user "<@{user}>/{user.id}\"'
+        message = f'Data for user "<@{user}>/{user.id}"'
         if vip is None or vip['vip_expiration'] == None:
             message += f'\nVIP expiration: user has no active VIP via the RCON server.'
         else:
@@ -366,7 +374,7 @@ class BotCommands(commands.Cog):
             message += f'\nVIP expiration: <t:{int(expiration.timestamp())}:R>'
         message += f'\nDatabase player name: `{player.player_name}`'
         message += f'\nLast time seeded: <t:{int(player.last_seed_check.timestamp())}:R>'
-        message += f'\nCurrent seeding balance (hours): `%d`' % timedelta_to_hours(player.seeding_time_balance)
+        message += f'\nCurrent seeding balance (hours): `{player.seeding_time_balance//timedelta(hours=1):,}`'
         message += f'\nTotal seeding time: `{player.total_seeding_time}`'
         await ctx.respond(message, ephemeral=True)
         return
@@ -377,9 +385,9 @@ class BotCommands(commands.Cog):
         """Handle exceptions and discord errors, including permissions"""
 
         if isinstance(error, commands.NotOwner):
-             await ctx.respond('Insufficient privileges to use that command.', ephemeral=True)
+            await ctx.respond('Insufficient privileges to use that command.', ephemeral=True)
         else:
-            message = '%s' % global_config['seedbot']['error_message']
+            message = global_config['seedbot']['error_message']
             if global_config['seedbot']['maintainer_discord_ids']:
                 try:
                     message += f'\nPlease contact the following maintainers/administrators:'

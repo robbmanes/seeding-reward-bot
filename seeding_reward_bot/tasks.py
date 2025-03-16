@@ -8,8 +8,8 @@ from discord.ext import commands, tasks
 from seeding_reward_bot.config import global_config
 from seeding_reward_bot.db import HLL_Player
 
-
 SEEDING_INCREMENT_TIMER = 3 # Minutes - how often the RCON is queried for seeding checks
+
 
 class BotTasks(commands.Cog):
     """
@@ -50,12 +50,12 @@ class BotTasks(commands.Cog):
                     return start <= now or now < end
 
             if not is_now(seeding_start_time, seeding_end_time, time_now):
-                self.logger.debug(f'Not within seeding time range of \"{seeding_start_time_str} - {seeding_end_time_str}\" UTC')
+                self.logger.debug(f'Not within seeding time range of "{seeding_start_time_str} - {seeding_end_time_str}" UTC')
                 return
 
         except ValueError as e:
             # If we excepted here, then the string is incorrect in fromisoformat (or something worse!)
-            self.logger.error(f'Can\'t set seeding hours: {e}')
+            self.logger.error(f"Can't set seeding hours: {e}")
             pass
         except TypeError as e:
             # If we excepted here, then seeding times are undefined, carry on
@@ -69,28 +69,28 @@ class BotTasks(commands.Cog):
 
         # Run once per RCON:
         for rcon_server_url in result.keys():
-            self.logger.debug(f'Processing seeding player list for \"{rcon_server_url}\"...')
+            self.logger.debug(f'Processing seeding player list for "{rcon_server_url}"...')
             player_list = result[rcon_server_url]
 
             # Check if the player list is empty. If it is, skip it.
             if player_list == None:
-                self.logger.info(f'No players on \"{rcon_server_url}\", skipping.')
+                self.logger.info(f'No players on "{rcon_server_url}", skipping.')
                 continue
 
             # Check if player count is below seeding threshold
             if len(player_list) < global_config['hell_let_loose']['seeding_threshold']:
-                self.logger.info(f'Server \"{rcon_server_url}\" qualifies for seeding status at this time.')
-                self.logger.debug(f'Returned player list for \"{rcon_server_url}\" is \"{player_list}\"')
+                self.logger.info(f'Server "{rcon_server_url}" qualifies for seeding status at this time.')
+                self.logger.debug(f'Returned player list for "{rcon_server_url}" is "{player_list}"')
 
                 # Iterate through current players and accumulate their seeding time
                 for player in player_list:
                     player_name = player['name']
                     steam_id_64 = player['player_id']
-                    self.logger.debug(f'Processing seeding record for player \"{player_name}/{steam_id_64}\"')
+                    self.logger.debug(f'Processing seeding record for player "{player_name}/{steam_id_64}"')
                     seeder_query = await HLL_Player.filter(steam_id_64__contains=player['player_id'])
                     if not seeder_query:
                         # New seeder, make a record
-                        self.logger.debug(f'Generating new seeder record for \"{player_name}/{steam_id_64}\"')
+                        self.logger.debug(f'Generating new seeder record for "{player_name}/{steam_id_64}"')
                         s = HLL_Player(
                                 steam_id_64=steam_id_64,
                                 player_name=player_name,
@@ -101,7 +101,7 @@ class BotTasks(commands.Cog):
                             )
                         await s.save()
                     elif len(seeder_query) != 1:
-                        self.logger.error(f'Multiple steam64id\'s found for \"{steam_id_64}\"!')
+                        self.logger.error(f'Multiple steam64id\'s found for "{steam_id_64}"!')
                     else:
                         # Account for seeding time for player
                         seeder = seeder_query[0]
@@ -112,33 +112,30 @@ class BotTasks(commands.Cog):
                         seeder.last_seed_check = datetime.now(timezone.utc)
 
                         try:
-                            self.logger.debug(f'Updating record for \"{seeder.player_name}/{seeder.steam_id_64}\" to new total \"{seeder.total_seeding_time}\" (new seeding balance \"{seeder.seeding_time_balance}\")')
+                            self.logger.debug(f'Updating record for "{seeder.player_name}/{seeder.steam_id_64}" to new total "{seeder.total_seeding_time}" (new seeding balance "{seeder.seeding_time_balance}")')
                             await seeder.save()
-                            self.logger.debug(f'Successfully updated seeding record for \"{seeder.player_name}\"')
+                            self.logger.debug(f'Successfully updated seeding record for "{seeder.player_name}"')
                         except Exception as e:
-                            self.logger.error(f'Failed updating record \"{seeder.player_name}\" during seeding: {e}')
+                            self.logger.error(f'Failed updating record "{seeder.player_name}" during seeding: {e}')
 
                         # Check if user has gained an hour of seeding awards.
-                        new_hourly = seeder.seeding_time_balance//timedelta(hours=1)
-                        old_hourly = old_seed_balance//timedelta(hours=1)
+                        new_hourly = seeder.seeding_time_balance // timedelta(hours=1)
+                        old_hourly = old_seed_balance // timedelta(hours=1)
 
                         if new_hourly > old_hourly:
-                            self.logger.debug(f'Player \"{seeder.player_name}/{seeder.steam_id_64}\" has gained 1 hour seeder rewards')
+                            self.logger.debug(f'Player "{seeder.player_name}/{seeder.steam_id_64}" has gained 1 hour seeder rewards')
                             msg_result = await self.client.send_player_message(
                                 rcon_server_url,
                                 seeder.steam_id_64,
                                 global_config['hell_let_loose']['seeder_reward_message'],
                             )
                             if not msg_result:
-                                self.logger.error(f'Failed to send seeder reward message to player \"{seeder.steam_id_64}\"')
+                                self.logger.error(f'Failed to send seeder reward message to player "{seeder.steam_id_64}"')
 
-                self.logger.debug(f'Seeder status updated for server \"{rcon_server_url}\"')
+                self.logger.debug(f'Seeder status updated for server "{rcon_server_url}"')
             else:
-                self.logger.debug("Server %s does not qualify as seeding status at this time (player_count = %s, must be > %s).  Skipping." % (
-                        rcon_server_url,
-                        len(player_list),
-                        global_config['hell_let_loose']['seeding_threshold'],
-                    )
+                self.logger.debug(
+                    f"Server {rcon_server_url} does not qualify as seeding status at this time (player_count = {len(player_list)}, must be > {global_config['hell_let_loose']['seeding_threshold']}).  Skipping."
                 )
 
     def cog_unload(self):
