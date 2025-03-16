@@ -112,11 +112,8 @@ class BotTasks(commands.Cog):
                             self.logger.error(f'Failed updating record \"{seeder.player_name}\" during seeding: {e}')
 
                         # Check if user has gained an hour of seeding awards.
-                        m, s = divmod(seeder.seeding_time_balance.seconds, 60)
-                        new_hourly, _ = divmod(m, 60)
-
-                        m, s = divmod(old_seed_balance.seconds, 60)
-                        old_hourly, _ = divmod(m, 60)
+                        new_hourly = seeder.seeding_time_balance//timedelta(hours=1)
+                        old_hourly = old_seed_balance//timedelta(hours=1)
 
                         if new_hourly > old_hourly:
                             self.logger.debug(f'Player \"{seeder.player_name}/{seeder.steam_id_64}\" has gained 1 hour seeder rewards')
