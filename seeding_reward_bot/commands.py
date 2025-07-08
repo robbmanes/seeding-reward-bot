@@ -1,5 +1,6 @@
 from datetime import datetime, time, timedelta, timezone
 import discord
+from discord import guild_only
 from discord.commands import Option
 from discord.commands import SlashCommandGroup
 from discord.ext import commands, tasks
@@ -210,6 +211,7 @@ class BotCommands(commands.Cog):
                     return
 
     @hll.command()
+    @guild_only()
     async def gift(self, ctx: discord.ApplicationContext,
         receiver_discord_user: Option(
             discord.Member,
@@ -267,6 +269,7 @@ class BotCommands(commands.Cog):
                 return
             
     @hll_admin.command()
+    @guild_only()
     async def grant_seeder_time(self,
                             ctx: discord.ApplicationContext,
                             user: Option(
@@ -299,6 +302,7 @@ class BotCommands(commands.Cog):
         return
     
     @hll_admin.command()
+    @guild_only()
     async def check_user(self,
                         ctx: discord.ApplicationContext,
                         user: Option(
