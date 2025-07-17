@@ -220,6 +220,7 @@ class BotCommands(commands.Cog):
             int,
             'amount of hours to gift',
             required=False,
+            min_value=1,
         )
     ):
         """Gift VIP to another player"""
