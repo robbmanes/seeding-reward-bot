@@ -24,4 +24,4 @@ seeder_reward_message = "You've earned 1 hour of VIP for seeding!"
 seeding_start_time_utc = "11:00"
 seeding_end_time_utc = "20:00"
 max_log_parse_mins = 30
-allow_messages_to_players = false
+allow_messages_to_players = true
