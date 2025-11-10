@@ -9,6 +9,7 @@ import os
 import sys
 import traceback
 
+
 def run_discord_bot():
     """
     Entry point for discord bot.
@@ -21,7 +22,7 @@ def run_discord_bot():
             logging.basicConfig(level=logging.DEBUG)
 
     logger = logging.getLogger(__package__)
-    
+
     # Check environment variables to override settings file
     env_token = os.environ.get('DISCORD_TOKEN')
     if env_token is not None:
@@ -48,7 +49,7 @@ def run_discord_bot():
     try:
         bot.guild_ids = []
         bot.guild_ids.append(global_config['discord']['discord_guild_id'])
-    except KeyValue as e:
+    except KeyError as e:
         logger.info('No guild ID\'s configured, proceeding...')
         pass
 
@@ -61,6 +62,7 @@ def run_discord_bot():
         global_config['discord']['discord_token'],
         reconnect=True,
     )
+
 
 if __name__ == '__main__':
     sys.exit(0)
