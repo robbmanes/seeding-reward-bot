@@ -10,7 +10,7 @@ discord_token = "DISCORD_TOKEN"
 [database.postgres]
 db_user = "seedbot"
 db_password = "seedbot"
-db_url = "localhost"
+db_url = "postgres"
 db_port = 5432
 db_name = "seedbot"
 
