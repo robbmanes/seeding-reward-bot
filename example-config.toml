@@ -16,8 +16,7 @@ db_name = "seedbot"
 
 [hell_let_loose]
 rcon_url = ["https://rcon_server_1.com:8080", "https://rcon_server_2.com:8081"]
-rcon_user = "rcon_user"
-rcon_password = "rcon_password"
+rcon_api_key = "rcon_api_key"
 seeding_threshold = 40
 seeder_vip_reward_hours = 1
 seeder_reward_message = "You've earned 1 hour of VIP for seeding!"
