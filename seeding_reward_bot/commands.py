@@ -27,26 +27,26 @@ class BotCommands(commands.Cog):
         self.logger = logging.getLogger(__name__)
     
     @hll.command()
-    async def register(self, ctx: discord.ApplicationContext, steam64: Option(
+    async def register(self, ctx: discord.ApplicationContext, player_id: Option(
             str,
-            'Your Steam ID (64 version, NOT 32 version)',
+            'Your Player ID (for Steam your SteamID64) found in the top right of OPTIONS in game',
             required=True,
         )
     ):
-        """Register your discord account to your steam64Id"""
+        """Register your discord account to your Player ID"""
 
         await ctx.defer(ephemeral=True)
 
         # See if the user already has an entry
-        query_result = await HLL_Player.filter(steam_id_64=steam64)
+        query_result = await HLL_Player.filter(steam_id_64=player_id)
         if len(query_result) > 1:
-            self.logger.error('Player lookup during steam64id returned multiple results:')
-            await ctx.respond(f'Found multiple players with that `steam64id` - that shouldn\'t happen! Please contact an administrator.', ephemeral=True)
+            self.logger.error('Player lookup during player_id returned multiple results:')
+            await ctx.respond(f'Found multiple players with that `player_id` - that shouldn\'t happen! Please contact an administrator.', ephemeral=True)
             return
         elif len(query_result) == 0:
             # No entry found, provide an error message and instructions to play first
-            self.logger.debug(f'Discord user {ctx.author.name} attempted to register steam64id `{steam64}`, denied due to no record')
-            await ctx.respond(f'{ctx.author.mention}: I don\'t see a record for that ID; please make sure you have seeded on our servers previously and enter your Steam64ID (https://steamid.io/lookup) to register.  Please open a ticket for additional help.', ephemeral=True)
+            self.logger.debug(f'Discord user {ctx.author.name} attempted to register player_id `{player_id}`, denied due to no record')
+            await ctx.respond(f'{ctx.author.mention}: I don\'t see a record for that ID; please make sure you have seeded on our servers previously and enter your Player ID (found in the top right of OPTIONS in game) to register.  Please open a ticket for additional help.', ephemeral=True)
             return
         elif len(query_result) == 1:
             # Found one existing entry
@@ -54,15 +54,15 @@ class BotCommands(commands.Cog):
             if player.discord_id is None:
                 player.discord_id = ctx.author.id
                 await player.save()
-                self.logger.debug(f'Updated user {ctx.author.mention} with steam64id `{steam64}`')
-                await ctx.respond(f'{ctx.author.mention}: I\'ve registered your `steam64id` to your Discord account. Thanks!', ephemeral=True)
+                self.logger.debug(f'Updated user {ctx.author.mention} with player_id `{player_id}`')
+                await ctx.respond(f'{ctx.author.mention}: I\'ve registered your `player_id` to your Discord account. Thanks!', ephemeral=True)
                 return
             elif player.discord_id == ctx.author.id:
-                await ctx.respond(f'That `steam64id` is already registered to you!', ephemeral=True)
+                await ctx.respond(f'That `player_id` is already registered to you!', ephemeral=True)
                 return
             else:
-                self.logger.debug(f'Discord user {ctx.author.name} attempted to register steam64id `{steam64}` but it is already owned by Discord user {player.discord_id}')
-                await ctx.respond(f'That `steam64id` is already registered to someone else.', ephemeral=True)
+                self.logger.debug(f'Discord user {ctx.author.name} attempted to register player_id `{player_id}` but it is already owned by Discord user {player.discord_id}')
+                await ctx.respond(f'That `player_id` is already registered to someone else.', ephemeral=True)
                 return
         else:
             raise
@@ -74,7 +74,7 @@ class BotCommands(commands.Cog):
         await ctx.defer(ephemeral=True)
         query_result = await HLL_Player.filter(discord_id=ctx.author.id)
         if len(query_result) == 0:
-            await ctx.respond(f'Your Discord ID doesn\'t match any known `steam64id`. Use `/hll register` to tie your ID to your discord.', ephemeral=True)
+            await ctx.respond(f'Your Discord ID doesn\'t match any known `player_id`. Use `/hll register` to tie your ID to your discord.', ephemeral=True)
             return
         player = query_result[0]
         message = f'Seeding stats for {ctx.author.mention}:'
@@ -93,7 +93,7 @@ class BotCommands(commands.Cog):
         self.logger.debug(f'VIP query for `{ctx.author.id}/{ctx.author.name}`.')
         player = await get_player_by_discord_id(ctx.author.id)
         if player is None:
-            await ctx.respond(f'Your Discord ID doesn\'t match any known `steam64id`. Use `/hll register` to tie your ID to your discord.', ephemeral=True)
+            await ctx.respond(f'Your Discord ID doesn\'t match any known `player_id`. Use `/hll register` to tie your ID to your discord.', ephemeral=True)
             return
 
         # We need to ensure we get the same VIP states for both RCON's.
@@ -288,7 +288,7 @@ class BotCommands(commands.Cog):
         await ctx.defer(ephemeral=True)
         player = await get_player_by_discord_id(user.id)
         if player is None:
-            await ctx.respond(f'User {user} ({user.id}) ID doesn\'t match any known `steam64id`. Inform them to use `/hll register` to tie their ID to their discord.', ephemeral=True)
+            await ctx.respond(f'User {user} ({user.id}) ID doesn\'t match any known `player_id`. Inform them to use `/hll register` to tie their ID to their discord.', ephemeral=True)
             return
         self.logger.info(f'User \"{player.discord_id}/{player.steam_id_64}\" is being granted {hours} seeder hours by discord user {ctx.author.mention}.')
 
