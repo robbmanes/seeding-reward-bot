@@ -2,6 +2,10 @@ compose.yml
 docker-compose.yml
 config.toml
 
+.python-version
+
+seedbot-db/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
