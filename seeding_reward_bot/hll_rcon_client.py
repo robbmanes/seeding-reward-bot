@@ -160,7 +160,7 @@ class HLL_RCON_Client(object):
             # We need to verify numerical input
             try:
                 if vip["player_id"] == steam_id_64:
-                    return vip
+                    return vip["vip_expiration"]
             except ValueError as e:
                 self.logger.error(f"Improper steam ID for VIP entry from RCON: {e}")
                 self.logger.error(f"Failed entry: {vip}")
