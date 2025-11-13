@@ -1,13 +1,15 @@
 import asyncio
-import discord
-from discord.ext import commands
-from seeding_reward_bot.config import global_config
-from seeding_reward_bot.db import SeedDatabase
-from seeding_reward_bot.hll_rcon_client import HLL_RCON_Client
 import logging
 import os
 import sys
 import traceback
+
+import discord
+from discord.ext import commands
+
+from seeding_reward_bot.config import global_config
+from seeding_reward_bot.db import SeedDatabase
+from seeding_reward_bot.hll_rcon_client import HLL_RCON_Client
 
 
 def run_discord_bot():
@@ -50,7 +52,7 @@ def run_discord_bot():
         bot.guild_ids = []
         bot.guild_ids.append(global_config['discord']['discord_guild_id'])
     except KeyError as e:
-        logger.info('No guild ID\'s configured, proceeding...')
+        logger.info("No guild ID's configured, proceeding...")
         pass
 
     # Disable Discord verbose logging - it's spammy
