@@ -143,6 +143,7 @@ class BotCommands(commands.Cog):
             int,
             'Redeem seeding hours for VIP status',
             required=False,
+            min_value=1,
         )
     ):
         """Redeem seeding hours for VIP status"""
