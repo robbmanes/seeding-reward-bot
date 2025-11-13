@@ -101,29 +101,27 @@ class BotCommands(commands.Cog):
                 ephemeral=True,
             )
             return
-        vip_entries = []
-        for key, vip in vip_dict.items():
-            vip_entries.append(vip)
 
-        if all(val != vip_entries[0] for val in vip_entries):
+        vip_set = set(vip_dict.values())
+        if len(vip_set) != 1:
             # VIP from all RCON's didn't match, notify.
             await ctx.respond(f'{ctx.author.mention}: It looks like your VIP status is different between servers, please contact an admin.', ephemeral=True)
             return
 
         # All is well, return to the (identical) first in the list
-        vip = vip_entries.pop()
+        vip = vip_set.pop()
 
-        if vip == None or vip['vip_expiration'] == None:
+        if vip is None:
             await ctx.respond(f'No VIP record found for {ctx.author.mention}.', ephemeral=True)
             return  
 
-        expiration = datetime.fromisoformat(vip["vip_expiration"])
-        if expiration.timestamp() < datetime.now(timezone.utc).timestamp():
+        expiration = datetime.fromisoformat(vip)
+        if expiration < datetime.now(timezone.utc):
             await ctx.respond(f'{ctx.author.mention}: your VIP appears to have expired.', ephemeral=True)
             return
-        elif expiration >= datetime(year=2200, month=1, day=1, tzinfo=timezone.utc):
-            # vanilla crcon uses now + 200y for indefinite vip... use something
-            # almost that far in the future to detect non-expiring vip.
+        elif expiration >= datetime(year=3000, month=1, day=1, tzinfo=timezone.utc):
+            # crcon uses UTC 3000-01-01 for indefinite VIP
+            #   and checks with >= to test for indefinite
             # converting seeding hours is pointless in this case.
             await ctx.respond(f'{ctx.author.mention}: Your VIP does not expire!', ephemeral=True)
             return
@@ -181,31 +179,29 @@ class BotCommands(commands.Cog):
                             ephemeral=True,
                         )
                         return
-                    vip_entries = []
-                    for key, vip in vip_dict.items():
-                        vip_entries.append(vip)
-                    if all(val != vip_entries[0] for val in vip_entries):
+                    vip_set = set(vip_dict.values())
+                    if len(vip_set) != 1:
                         # VIP from all RCON's didn't match, notify.
                         await ctx.respond(f'{ctx.author.mention}: It looks like your VIP status is different between servers, please contact an admin.', ephemeral=True)
                         return
 
                     # All is well, return to the (identical) first in the list
-                    vip = vip_entries.pop()
+                    vip = vip_set.pop()
                     
                     grant_value = global_config['hell_let_loose']['seeder_vip_reward_hours'] * hours
-                    if vip is None or vip['vip_expiration'] == None:
+                    if vip is None:
                         # !!! vip expiration is in utc...
                         expiration = datetime.now(timezone.utc) + timedelta(hours=grant_value)
                     else:
                         # Check if current expiration is in the past.  If it is, set it to current time.
-                        cur_expiration = datetime.fromisoformat(vip["vip_expiration"])
-                        if cur_expiration.timestamp() < datetime.now(timezone.utc).timestamp():
+                        cur_expiration = datetime.fromisoformat(vip)
+                        if cur_expiration < datetime.now(timezone.utc):
                             cur_expiration = datetime.now(timezone.utc)
 
                         expiration = cur_expiration + timedelta(hours=grant_value)
 
                     message = ''
-                    if expiration >= datetime(year=2200, month=1, day=1, tzinfo=timezone.utc): 
+                    if expiration >= datetime(year=3000, month=1, day=1, tzinfo=timezone.utc):
                         # non-expiring vip... converting seeding hours is pointless...
                         message += 'Your VIP does not expire... no need to convert seeding hours!'
                     else:
@@ -356,21 +352,19 @@ class BotCommands(commands.Cog):
                 ephemeral=True,
             )
             return
-        vip_entries = []
-        for key, vip in vip_dict.items():
-            vip_entries.append(vip)
-        if all(val != vip_entries[0] for val in vip_entries):
+        vip_set = set(vip_dict.values())
+        if len(vip_set) != 1:
             # VIP from all RCON's didn't match, notify.
             await ctx.respond(f'{ctx.author.mention}: VIP status is different between servers for user {user}/{user.id}, please contact an admin.', ephemeral=True)
             return
 
-        vip = vip_entries.pop()
+        vip = vip_set.pop()
 
         message = f'Data for user "<@{user}>/{user.id}"'
-        if vip is None or vip['vip_expiration'] == None:
+        if vip is None:
             message += f'\nVIP expiration: user has no active VIP via the RCON server.'
         else:
-            expiration = rcon_time_str_to_datetime(vip['vip_expiration'])
+            expiration = datetime.fromisoformat(vip)
             message += f'\nVIP expiration: <t:{int(expiration.timestamp())}:R>'
         message += f'\nDatabase player name: `{player.player_name}`'
         message += f'\nLast time seeded: <t:{int(player.last_seed_check.timestamp())}:R>'
