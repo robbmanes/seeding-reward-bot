@@ -13,3 +13,43 @@ The official instructions for creating a Discord Bot are located on the [discord
 This bot requires *no* Privileged Gateway Intents.
 
 Currently *no* permissions are required for the bot to operate as only slash commands are used.
+
+### Clone the repo
+`cd` to where you'd like to keep this
+```
+git clone https://github.com/robbmanes/seeding-reward-bot.git
+cd seeding-reward-bot
+```
+
+### Copy example config and compose files
+```
+cp example-config.toml config.toml
+cp example-compose.yml compose.yml
+```
+
+### Edit config.toml
+Use your favorite editor or try `nano` or `vim`
+```
+nano config.toml
+```
+
+Add your `discord_token`, set who the maintainer on discord will be with their id(s) in `maintainer_discord_ids`, set the discord guild id by uncommenting the line `discord_guild_id` and fill in the id from the guild the bot will run in
+
+Set the `rcon_url`'s to wherever your crcon is accessed at
+
+You'll need to make another user account in crcon for this, set the password to something unguessable and throw it away, perms needed (suggest the only ones the account has) are:
+```
+api | rcon user | Can add VIP status to players
+api | rcon user | Can message players
+api | rcon user | Can view get_players endpoint (name, steam ID, VIP status and sessions) for all connected players
+api | rcon user | Can view all players with VIP and their expiration timestamps
+```
+
+Make an api key for the account and add it to the config at `rcon_api_key`
+
+Change the other settings as wanted in the config
+
+## Build and start the bot
+```
+docker compose up --build -d
+```
