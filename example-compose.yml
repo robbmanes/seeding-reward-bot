@@ -1,24 +1,26 @@
-version: "3.8"
-
 name: seeding-reward-bot
 services:
   seeding-reward-bot:
-    container_name: seeding-reward-bot
     volumes:
       - ./config.toml:/home/seedbot/seeding_reward_bot/config.toml
     image: seeding-reward-bot
     restart: on-failure
     build:
       dockerfile: ./Dockerfile
-    network_mode: host
-  seeding-reward-bot-postgres-db:
+    depends_on:
+      postgres:
+        condition: service_healthy
+  postgres:
     environment:
       - POSTGRES_USER=seedbot
       - POSTGRES_PASSWORD=seedbot
-    container_name: seeding-reward-bot-postgres-db
     volumes:
       - ./seedbot-db:/var/lib/postgresql/data
-    image: docker.io/postgres:15.2
+    image: postgres:15.2
     restart: on-failure
-    ports:
-      - "127.0.0.1:5432:5432"
+    healthcheck:
+      test: [ "CMD", "pg_isready", "-U", "seedbot", "-d", "seedbot" ]
+      interval: 15s
+      timeout: 30s
+      retries: 5
+      start_period: 80s

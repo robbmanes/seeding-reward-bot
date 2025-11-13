@@ -1,30 +1,30 @@
-[tool.poetry]
+[project]
 name = "seeding_reward_bot"
 version = "0.1.0"
 description = "Discord Bot for encouraging and rewarding seeding for select games."
-authors = ["Robb Manes <robbmanes@protonmail.com>"]
+authors = [
+    {name = "Robb Manes", email = "robbmanes@protonmail.com"},
+]
+requires-python = ">=3.10,<3.14"
+dependencies = [
+    "tomli (>=2.0.1,<3.0.0)",
+    "py-cord (>=2.4.0,<3.0.0)",
+    "tortoise-orm[asyncpg] (>=0.19.3,<0.20.0)",
+    "aerich (>=0.7.1,<0.8.0)",
+    "httpx (>=0.26.0,<0.27.0)",
+]
 
-[tool.poetry.dependencies]
-python = "^3.10"
-tomli = "^2.0.1"
-asyncpg = "^0.27.0"
-py-cord = "^2.4.0"
-tortoise-orm = {extras = ["asyncpg"], version = "^0.19.3"}
-aerich = "^0.7.1"
-httpx = "^0.26.0"
-
-[tool.poetry.dev-dependencies]
+[tool.poetry.group.dev.dependencies]
 pytest = "^5.2"
 sphinx = "^6.1.3"
 myst-parser = "^1.0.0"
 furo = "^2023.3.27"
+black = "^25.11.0"
+isort = "^7.0.0"
 
-[tool.poetry.scripts]
+[project.scripts]
 seedbot = "seeding_reward_bot.main:run_discord_bot"
-seedbot_gameservice = "seeding_reward_bot.main:run_hll_gameservice"
 
 [build-system]
-requires = [
-    "poetry-core>=1.0.0",
-]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
 build-backend = "poetry.core.masonry.api"
