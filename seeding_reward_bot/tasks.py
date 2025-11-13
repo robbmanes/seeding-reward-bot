@@ -1,11 +1,13 @@
-from datetime import datetime, time, timedelta, timezone
-from seeding_reward_bot.db import HLL_Player
-import discord
-from discord.commands import Option
-from discord.commands import SlashCommandGroup
-from discord.ext import commands, tasks
-from seeding_reward_bot.config import global_config
 import logging
+from datetime import datetime, time, timedelta, timezone
+
+import discord
+from discord.commands import Option, SlashCommandGroup
+from discord.ext import commands, tasks
+
+from seeding_reward_bot.config import global_config
+from seeding_reward_bot.db import HLL_Player
+
 
 SEEDING_INCREMENT_TIMER = 3 # Minutes - how often the RCON is queried for seeding checks
 
@@ -21,7 +23,7 @@ class BotTasks(commands.Cog):
 
         # Start tasks during init
         self.update_seeders.start()
- 
+
     @tasks.loop(minutes=SEEDING_INCREMENT_TIMER)
     async def update_seeders(self):
         """
@@ -59,7 +61,11 @@ class BotTasks(commands.Cog):
             # If we excepted here, then seeding times are undefined, carry on
             pass
 
-        result = await self.client.get_player_list()
+        try:
+            result = await self.client.get_player_list()
+        except:
+            self.logger.exception(f"Getting player list failed for one server")
+            return
 
         # Run once per RCON:
         for rcon_server_url in result.keys():
@@ -141,8 +147,10 @@ class BotTasks(commands.Cog):
     def cog_unload(self):
         pass
 
+
 def setup(bot):
     bot.add_cog(BotTasks(bot))
+
 
 def teardown(bot):
     pass

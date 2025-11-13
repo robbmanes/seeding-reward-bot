@@ -12,6 +12,7 @@ dependencies = [
     "tortoise-orm[asyncpg] (>=0.19.3,<0.20.0)",
     "aerich (>=0.7.1,<0.8.0)",
     "httpx (>=0.26.0,<0.27.0)",
+    "stamina (>=25.1.0,<26.0.0)",
 ]
 
 [tool.poetry.group.dev.dependencies]

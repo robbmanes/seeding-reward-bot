@@ -1,17 +1,19 @@
+import logging
 from datetime import datetime, time, timedelta, timezone
+
 import discord
 from discord import guild_only
-from discord.commands import Option
-from discord.commands import SlashCommandGroup
+from discord.commands import Option, SlashCommandGroup
 from discord.ext import commands, tasks
+
 from seeding_reward_bot.config import global_config
 from seeding_reward_bot.db import HLL_Player, get_player_by_discord_id
-from seeding_reward_bot.hll_rcon_client import HLL_RCON_Client, rcon_time_str_to_datetime
-import logging
+
 
 def timedelta_to_hours(duration: timedelta):
     seconds = duration.total_seconds()
     return seconds // 3600
+
 
 class BotCommands(commands.Cog):
     """
@@ -25,7 +27,7 @@ class BotCommands(commands.Cog):
         self.bot = bot
         self.client = bot.client
         self.logger = logging.getLogger(__name__)
-    
+
     @hll.command()
     async def register(self, ctx: discord.ApplicationContext, player_id: Option(
             str,
@@ -97,7 +99,14 @@ class BotCommands(commands.Cog):
             return
 
         # We need to ensure we get the same VIP states for both RCON's.
-        vip_dict = await self.client.get_vip(player.steam_id_64)
+        try:
+            vip_dict = await self.client.get_vip(player.steam_id_64)
+        except:
+            await ctx.respond(
+                f"{ctx.author.mention}: There was an error fetching your VIP status from one of the servers, try again later",
+                ephemeral=True,
+            )
+            return
         vip_entries = []
         for key, vip in vip_dict.items():
             vip_entries.append(vip)
@@ -114,11 +123,11 @@ class BotCommands(commands.Cog):
             await ctx.respond(f'No VIP record found for {ctx.author.mention}.', ephemeral=True)
             return  
 
-        expiration = rcon_time_str_to_datetime(vip['vip_expiration'])
+        expiration = datetime.fromisoformat(vip["vip_expiration"])
         if expiration.timestamp() < datetime.now(timezone.utc).timestamp():
             await ctx.respond(f'{ctx.author.mention}: your VIP appears to have expired.', ephemeral=True)
             return
-        elif expiration >= datetime(year=2200, month=1, day=1, tzinfo=timezone.utc): 
+        elif expiration >= datetime(year=2200, month=1, day=1, tzinfo=timezone.utc):
             # vanilla crcon uses now + 200y for indefinite vip... use something
             # almost that far in the future to detect non-expiring vip.
             # converting seeding hours is pointless in this case.
@@ -161,7 +170,14 @@ class BotCommands(commands.Cog):
                 else:
 
                     # Check the previous VIP values from both RCON's to ensure they are identical prior to proceeding
-                    vip_dict = await self.client.get_vip(player.steam_id_64)
+                    try:
+                        vip_dict = await self.client.get_vip(player.steam_id_64)
+                    except:
+                        await ctx.respond(
+                            f"{ctx.author.mention}: There was an error fetching your current VIP status from one of the servers, try again later",
+                            ephemeral=True,
+                        )
+                        return
                     vip_entries = []
                     for key, vip in vip_dict.items():
                         vip_entries.append(vip)
@@ -179,7 +195,7 @@ class BotCommands(commands.Cog):
                         expiration = datetime.now(timezone.utc) + timedelta(hours=grant_value)
                     else:
                         # Check if current expiration is in the past.  If it is, set it to current time.
-                        cur_expiration = rcon_time_str_to_datetime(vip['vip_expiration'])
+                        cur_expiration = datetime.fromisoformat(vip["vip_expiration"])
                         if cur_expiration.timestamp() < datetime.now(timezone.utc).timestamp():
                             cur_expiration = datetime.now(timezone.utc)
 
@@ -191,7 +207,9 @@ class BotCommands(commands.Cog):
                         message += 'Your VIP does not expire... no need to convert seeding hours!'
                     else:
                         # Make sure all RCON grants are successful.
-                        result_dict = await self.client.grant_vip(player.player_name, player.steam_id_64, expiration.strftime('%Y-%m-%dT%H:%M:%S%z'))
+                        result_dict = await self.client.grant_vip(
+                            player.player_name, player.steam_id_64, expiration
+                        )
                         for rcon, result in result_dict.items():
                             if result is False:
                                 self.logger.error(f'Problem assigning VIP in `claim` for \"{rcon}\": {result}')
@@ -246,7 +264,7 @@ class BotCommands(commands.Cog):
                 message += f'\nMake sure you have run `/hll register` and registered your Steam and Discord.'
                 await ctx.respond(message, ephemeral=True)
                 return
-            
+
             if hours > timedelta_to_hours(gifter.seeding_time_balance):
                 await ctx.respond(f'{ctx.author.mention}: ❌ Sorry, not enough banked time to claim `{hours}` hour(s) of VIP (Currently have `%d` banked hours).' % timedelta_to_hours(gifter.seeding_time_balance), ephemeral=True)
                 return
@@ -268,7 +286,7 @@ class BotCommands(commands.Cog):
 
                 await ctx.respond(message, ephemeral=True)
                 return
-            
+
     @hll_admin.command()
     @guild_only()
     async def grant_seeder_time(self,
@@ -301,7 +319,7 @@ class BotCommands(commands.Cog):
         message += f'User {user}\'s seeder balance is now `%d` hour(s).' % timedelta_to_hours(player.seeding_time_balance)
         await ctx.respond(message, ephemeral=True)
         return
-    
+
     @hll_admin.command()
     @guild_only()
     async def check_user(self,
@@ -321,7 +339,14 @@ class BotCommands(commands.Cog):
         self.logger.debug(f'User {ctx.author.mention} is inspecting player data for \"{player.discord_id}/{player.steam_id_64}\"')
 
         # TODO: Merge this into a method with "grant"
-        vip_dict = await self.client.get_vip(player.steam_id_64)
+        try:
+            vip_dict = await self.client.get_vip(player.steam_id_64)
+        except:
+            await ctx.respond(
+                f"{ctx.author.mention}: There was an error fetching the current VIP status for user {user}/{user.id} from one of the servers, try again later",
+                ephemeral=True,
+            )
+            return
         vip_entries = []
         for key, vip in vip_dict.items():
             vip_entries.append(vip)
@@ -329,7 +354,7 @@ class BotCommands(commands.Cog):
             # VIP from all RCON's didn't match, notify.
             await ctx.respond(f'{ctx.author.mention}: VIP status is different between servers for user {user}/{user.id}, please contact an admin.', ephemeral=True)
             return
-        
+
         vip = vip_entries.pop()
 
         message = f'Data for user "<@{user}>/{user.id}\"'
@@ -344,7 +369,7 @@ class BotCommands(commands.Cog):
         message += f'\nTotal seeding time: `{player.total_seeding_time}`'
         await ctx.respond(message, ephemeral=True)
         return
-    
+
     @commands.Cog.listener()
     async def on_application_command_error(
         self, ctx: discord.ApplicationContext, error: discord.DiscordException):
@@ -365,13 +390,14 @@ class BotCommands(commands.Cog):
             message += f'\n`{error}`'
             await ctx.respond(message, ephemeral=True)
             raise error
-    
+
     def cog_unload(self):
         pass
 
 
 def setup(bot):
     bot.add_cog(BotCommands(bot))
+
 
 def teardown(bot):
     pass
