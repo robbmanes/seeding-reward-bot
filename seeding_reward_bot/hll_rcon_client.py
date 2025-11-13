@@ -196,7 +196,7 @@ class HLL_RCON_Client(object):
                     "message": message,
                 },
             )
-            if result == "SUCCESS":
+            if result:
                 return True
         except:
             self.logger.exception("An Exception occurred while messaging player")
