@@ -106,6 +106,7 @@ class BotTasks(commands.Cog):
                         seeder.last_seed_check = datetime.now(timezone.utc)
 
                         try:
+                            self.logger.debug(f'Updating record for \"{seeder.player_name}/{seeder.steam_id_64}\" to new total \"{seeder.total_seeding_time}\" (new seeding balance \"{seeder.seeding_time_balance}\")')
                             await seeder.save()
                             self.logger.debug(f'Successfully updated seeding record for \"{seeder.player_name}\"')
                         except Exception as e:
@@ -127,8 +128,6 @@ class BotTasks(commands.Cog):
                             )
                             if not msg_result:
                                 self.logger.error(f'Failed to send seeder reward message to player \"{seeder.steam_id_64}\"')
-                        else:
-                            self.logger.debug(f'Player \"{seeder.player_name}/{seeder.steam_id_64}\" did not qualify to have their record updated.')
 
                 self.logger.debug(f'Seeder status updated for server \"{rcon_server_url}\"')
             else:
