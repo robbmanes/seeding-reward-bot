@@ -45,6 +45,8 @@ class BotTasks(commands.Cog):
 
             # https://stackoverflow.com/questions/20518122/python-working-out-if-time-now-is-between-two-times
             def is_now(start, end, now):
+                if start == end:
+                    return True
                 if start <= end:
                     return start <= now <= end
                 else:
