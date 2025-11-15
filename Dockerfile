@@ -1,4 +1,4 @@
-FROM python:3.11
+FROM python:3.13
 RUN useradd seedbot -m && \
     mkdir -p /home/seedbot/seeding_reward_bot
 USER seedbot
