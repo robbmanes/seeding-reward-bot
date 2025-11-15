@@ -1,11 +1,10 @@
 import logging
-
-import tomli
+import tomllib
 
 
 class Configuration(object):
 
-    def __init__(self, config_file='config.toml'):
+    def __init__(self, config_file="config.toml"):
         self.logger = logging.getLogger(__package__)
         self.config_file = config_file
         self.settings = self.parse_config(self.config_file)
@@ -13,7 +12,7 @@ class Configuration(object):
     def parse_config(self, config_file):
         try:
             with open(config_file, "rb") as f:
-                config = tomli.load(f)
+                config = tomllib.load(f)
             return config
         except Exception as e:
             self.logger.fatal(
