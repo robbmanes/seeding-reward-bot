@@ -38,8 +38,7 @@ class HLL_RCON_Client(object):
             self.logger.debug(
                 f'Executing "{fn.__name__}" with RCON "{rcon_server_url}" as an endpoint...'
             )
-            res = await fn(self, rcon_server_url, *args)
-            return res
+            return await fn(self, rcon_server_url, *args)
 
         return wrapper
 
@@ -57,20 +56,22 @@ class HLL_RCON_Client(object):
         """
 
         async def wrapper(self, *args):
-            ret_vals = {}
-            for rcon_server_url in global_config["hell_let_loose"]["rcon_url"]:
-                try:
-                    self.logger.debug(
-                        f'Executing "{fn.__name__}" with RCON "{rcon_server_url}" as an endpoint...'
-                    )
-                    res = await fn(self, rcon_server_url, *args)
-                    ret_vals[rcon_server_url] = res
-                except Exception as e:
-                    raise
-                # We need to check if the return value is identical for each RCON.
-                # If it is not, error/alert to avoid deviant behavior.
+            tasks = {}
+            try:
+                async with asyncio.TaskGroup() as tg:
+                    for rcon_server_url in global_config["hell_let_loose"]["rcon_url"]:
+                        self.logger.debug(
+                            f'Executing "{fn.__name__}" with RCON "{rcon_server_url}" as an endpoint...'
+                        )
+                        tasks[rcon_server_url] = tg.create_task(
+                            fn(self, rcon_server_url, *args)
+                        )
+            except Exception as e:
+                raise
+            # We need to check if the return value is identical for each RCON.
+            # If it is not, error/alert to avoid deviant behavior.
 
-            return ret_vals
+            return {url: task.result() for url, task in tasks.items()}
 
         return wrapper
 
@@ -167,12 +168,16 @@ class HLL_RCON_Client(object):
                 continue
         return None
 
-    @for_each_rcon
+    @for_single_rcon
     async def get_player_list(self, rcon_server_url):
         """
         Queries the RCON server(s) for a list of players.
         """
-        return await self.get_rcon(rcon_server_url, "get_players")
+        try:
+            return await self.get_rcon(rcon_server_url, "get_players")
+        except:
+            self.logger.exception(f"get_players failed for {rcon_server_url}")
+        return []
 
     @for_single_rcon
     async def send_player_message(self, rcon_server_url, steam_id_64, message):
@@ -188,15 +193,14 @@ class HLL_RCON_Client(object):
             return True
 
         try:
-            result = await self.post_rcon(
+            if await self.post_rcon(
                 rcon_server_url,
                 "message_player",
                 {
                     "player_id": steam_id_64,
                     "message": message,
                 },
-            )
-            if result:
+            ):
                 return True
         except:
             self.logger.exception("An Exception occurred while messaging player")
