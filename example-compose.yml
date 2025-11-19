@@ -2,11 +2,10 @@ name: seeding-reward-bot
 services:
   seeding-reward-bot:
     volumes:
-      - ./config.toml:/home/seedbot/seeding_reward_bot/config.toml
+      - ./config.toml:/app/config.toml
     image: seeding-reward-bot
     restart: on-failure
-    build:
-      dockerfile: ./Dockerfile
+    build: .
     depends_on:
       postgres:
         condition: service_healthy
