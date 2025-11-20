@@ -13,7 +13,7 @@ class HLL_RCON_Error(Exception):
     pass
 
 
-class HLL_RCON_Client(object):
+class HLL_RCON_Client:
     """
     Represents connection to one or more https://github.com/MarechJ/hll_rcon_tool endpoints.
 
@@ -26,6 +26,9 @@ class HLL_RCON_Client(object):
     def __init__(self):
         self.logger = logging.getLogger(__name__)
         self.client = httpx.AsyncClient()
+
+    async def close(self):
+        await self.client.aclose()
 
     def for_single_rcon(fn):
         """

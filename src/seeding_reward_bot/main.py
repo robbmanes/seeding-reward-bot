@@ -6,8 +6,8 @@ import traceback
 
 import discord
 
+from seeding_reward_bot import db
 from seeding_reward_bot.config import global_config
-from seeding_reward_bot.db import SeedDatabase
 from seeding_reward_bot.hll_rcon_client import HLL_RCON_Client
 
 
@@ -33,9 +33,6 @@ def run_discord_bot():
     if env_token is not None:
         global_config['discord']['discord_guild_id'] = env_token
 
-    # Initialize database
-    db = SeedDatabase(asyncio.get_event_loop())
-
     # Create a discord bot
     bot = discord.Bot()
 
@@ -59,10 +56,19 @@ def run_discord_bot():
 
     # Actually run the bot.
     logger.info("Starting discord services...")
-    bot.run(
-        global_config['discord']['discord_token'],
-        reconnect=True,
-    )
+
+    # Initialize database
+    bot.loop.create_task(db.init())
+    try:
+        bot.loop.run_until_complete(
+            bot.start(global_config["discord"]["discord_token"])
+        )
+    except KeyboardInterrupt:
+        bot.loop.run_until_complete(bot.close())
+    finally:
+        bot.loop.run_until_complete(bot.client.close())
+        bot.loop.run_until_complete(db.close())
+        bot.loop.close()
 
 
 if __name__ == '__main__':

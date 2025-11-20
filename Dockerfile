@@ -24,9 +24,11 @@ ENV PATH=/app/bin:$PATH
 
 USER seedbot
 WORKDIR /app
+COPY pyproject.toml entrypoint.sh .
+COPY migrations migrations
 
 STOPSIGNAL SIGINT
-CMD ["seedbot"]
+ENTRYPOINT ["./entrypoint.sh"]
 
 RUN <<EOT
 python -V
