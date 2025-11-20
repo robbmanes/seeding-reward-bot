@@ -5,7 +5,6 @@ import sys
 import traceback
 
 import discord
-from discord.ext import commands
 
 from seeding_reward_bot.config import global_config
 from seeding_reward_bot.db import SeedDatabase
@@ -38,7 +37,7 @@ def run_discord_bot():
     db = SeedDatabase(asyncio.get_event_loop())
 
     # Create a discord bot
-    bot = commands.Bot(command_prefix='!')
+    bot = discord.Bot()
 
     # Provide the discord bot with an RCON client:
     bot.client = HLL_RCON_Client()
