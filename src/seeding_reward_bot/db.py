@@ -5,49 +5,35 @@ from tortoise.models import Model
 
 from seeding_reward_bot.config import global_config
 
-
-class SeedDatabase(Tortoise):
-    """
-    Extension of the base Tortoise database for seeding-reward-bot.
-    Only supports postgresql, and self-generates configuration and initialization.
-    """
-
-    models = ['aerich.models', 'seeding_reward_bot.db']
-
-    def __init__(self, event_loop):
-        super().__init__()
-
-        self.logger = logging.getLogger(__package__)
-        self.db_config = self.generate_db_config()
-
-        self.logger.info(f"Loading ORM for models: {self.models}")
-        event_loop.run_until_complete(Tortoise.init(config=self.db_config))
-        event_loop.run_until_complete(Tortoise.generate_schemas())
-
-    def generate_db_config(self):
-        db_config = {
-            'connections': {
-                'default': {
-                    'engine': "tortoise.backends.asyncpg",
-                    'credentials': {
-                        'host': global_config['database']['postgres']['db_url'],
-                        'port': global_config['database']['postgres']['db_port'],
-                        'user': global_config['database']['postgres']['db_user'],
-                        'password': global_config['database']['postgres']['db_password'],
-                        'database': global_config['database']['postgres']['db_name'],
-                    },
-                },
+TORTOISE_MODELS = ["aerich.models", "seeding_reward_bot.db"]
+TORTOISE_ORM = {
+    "connections": {
+        "default": {
+            "engine": "tortoise.backends.asyncpg",
+            "credentials": {
+                "host": global_config["database"]["postgres"]["db_url"],
+                "port": global_config["database"]["postgres"]["db_port"],
+                "user": global_config["database"]["postgres"]["db_user"],
+                "password": global_config["database"]["postgres"]["db_password"],
+                "database": global_config["database"]["postgres"]["db_name"],
             },
-            'apps': {
-                'seedbot': {
-                    'models': self.models,
-                    'default_connection': 'default',
-                },
-            },
-        }
+        },
+    },
+    "apps": {
+        "seedbot": {
+            "models": TORTOISE_MODELS,
+            "default_connection": "default",
+        },
+    },
+}
 
-        return db_config
 
+async def init():
+    await Tortoise.init(config=TORTOISE_ORM)
+
+
+async def close():
+    await Tortoise.close_connections()
 
 async def get_player_by_discord_id(discord_id):
     """
