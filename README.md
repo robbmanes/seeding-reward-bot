@@ -19,6 +19,8 @@ Currently *no* permissions are required for the bot to operate as only slash com
 ```
 git clone https://github.com/robbmanes/seeding-reward-bot.git
 cd seeding-reward-bot
+git fetch --tags
+git checkout $(git describe --tags $(git rev-list --tags --max-count=1))
 ```
 
 ### Copy example config and compose files
