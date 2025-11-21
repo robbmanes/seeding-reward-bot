@@ -7,7 +7,7 @@ from discord.commands import Option, SlashCommandGroup
 from discord.ext import commands, tasks
 
 from seeding_reward_bot.config import global_config
-from seeding_reward_bot.db import HLL_Player, get_player_by_discord_id
+from seeding_reward_bot.db import HLL_Player
 
 
 class BotCommands(commands.Cog):
@@ -87,7 +87,7 @@ class BotCommands(commands.Cog):
 
         await ctx.defer(ephemeral=True)
         self.logger.debug(f'VIP query for `{ctx.author.id}/{ctx.author.name}`.')
-        player = await get_player_by_discord_id(ctx.author.id)
+        player = await HLL_Player.by_discord_id(ctx.author.id)
         if player is None:
             await ctx.respond(f"Your Discord ID doesn't match any known `player_id`. Use `/hll register` to tie your ID to your discord.", ephemeral=True)
             return
@@ -149,7 +149,7 @@ class BotCommands(commands.Cog):
             await ctx.respond(message, ephemeral=True)
             return
         else:
-            player = await get_player_by_discord_id(ctx.author.id)
+            player = await HLL_Player.by_discord_id(ctx.author.id)
             if player is None:
                 message = f"{ctx.author.mention}: Can't find your ID to claim VIP."
                 message += f'\nMake sure you have run `/hll register` and registered your Steam and Discord.'
@@ -169,7 +169,6 @@ class BotCommands(commands.Cog):
                     )
                     return
                 else:
-
                     # Check the previous VIP values from both RCON's to ensure they are identical prior to proceeding
                     try:
                         vip_dict = await self.client.get_vip(player.steam_id_64)
@@ -187,7 +186,7 @@ class BotCommands(commands.Cog):
 
                     # All is well, return to the (identical) first in the list
                     vip = vip_set.pop()
-                    
+
                     grant_value = global_config['hell_let_loose']['seeder_vip_reward_hours'] * hours
                     if vip is None:
                         # !!! vip expiration is in utc...
@@ -253,11 +252,11 @@ class BotCommands(commands.Cog):
             await ctx.respond(message, ephemeral=True)
             return
         else:
-            receiver = await get_player_by_discord_id(receiver_discord_user.id)
+            receiver = await HLL_Player.by_discord_id(receiver_discord_user.id)
             if receiver is None:
                 await ctx.respond(f'No information in database for user {receiver_discord_user} ({receiver_discord_user.id}) via `player_id`. Inform them to use `/hll register` to tie their ID to their discord.', ephemeral=True)
                 return
-            gifter = await get_player_by_discord_id(ctx.author.id)
+            gifter = await HLL_Player.by_discord_id(ctx.author.id)
             if gifter is None:
                 message = f"{ctx.author.mention}: Can't find your ID to claim VIP."
                 message += f'\nMake sure you have run `/hll register` and registered your Steam and Discord.'
@@ -309,7 +308,7 @@ class BotCommands(commands.Cog):
     ):
         """Admin-only command to grant user banked seeding time.  The user still must redeem the time."""
         await ctx.defer(ephemeral=True)
-        player = await get_player_by_discord_id(user.id)
+        player = await HLL_Player.by_discord_id(user.id)
         if player is None:
             await ctx.respond(f"User {user} ({user.id}) ID doesn't match any known `player_id`. Inform them to use `/hll register` to tie their ID to their discord.", ephemeral=True)
             return
@@ -337,7 +336,7 @@ class BotCommands(commands.Cog):
     ):
         "Admin-only command to check a user's VIP and seeding time."
         await ctx.defer(ephemeral=True)
-        player = await get_player_by_discord_id(user.id)
+        player = await HLL_Player.by_discord_id(user.id)
         if player is None:
             await ctx.respond(f'No information in database for user {user} ({user.id}) via `player_id`. Inform them to use `/hll register` to tie their ID to their discord.', ephemeral=True)
             return

@@ -35,20 +35,6 @@ async def init():
 async def close():
     await Tortoise.close_connections()
 
-async def get_player_by_discord_id(discord_id):
-    """
-    Performs a lookup for a user based on their steam_64_id <=> discord_id.
-    If no result, None is returned indicating the user has no entry or hasn't registered.
-    """
-    query_set = await HLL_Player.filter(discord_id__contains=discord_id)
-    if len(query_set) == 0:
-        return None
-    elif len(query_set) != 1:
-        self.logger.fatal("Multiple discord_id's found for {discord_id}!")
-        raise
-    else:
-        return query_set[0]
-
 
 class HLL_Player(Model):
     """
@@ -67,3 +53,17 @@ class HLL_Player(Model):
             return self.player_name
         else:
             return self.steam_id_64
+
+    async def by_discord_id(discord_id):
+        """
+        Performs a lookup for a user based on their steam_64_id <=> discord_id.
+        If no result, None is returned indicating the user has no entry or hasn't registered.
+        """
+        query_set = await HLL_Player.filter(discord_id__contains=discord_id)
+        if len(query_set) == 0:
+            return None
+        elif len(query_set) != 1:
+            self.logger.fatal("Multiple discord_id's found for {discord_id}!")
+            raise
+        else:
+            return query_set[0]
