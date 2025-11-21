@@ -24,6 +24,8 @@ class BotTasks(commands.Cog):
         self.client = bot.client
         self.logger = logging.getLogger(__name__)
 
+        self.reward_time = timedelta(minutes=SEEDING_INCREMENT_TIMER)
+
         # Start tasks during init
         self.update_seeders.start()
 
@@ -110,8 +112,8 @@ class BotTasks(commands.Cog):
                         steam_id_64=steam_id_64,
                         player_name=player_name,
                         discord_id=None,
-                        seeding_time_balance=timedelta(minutes=0),
-                        total_seeding_time=timedelta(minutes=0),
+                        seeding_time_balance=self.reward_time,
+                        total_seeding_time=self.reward_time,
                         last_seed_check=datetime.now(timezone.utc),
                     )
                     await s.save()
@@ -122,10 +124,10 @@ class BotTasks(commands.Cog):
                 else:
                     # Account for seeding time for player
                     seeder = seeder_query[0]
-                    additional_time = timedelta(minutes=SEEDING_INCREMENT_TIMER)
                     old_seed_balance = seeder.seeding_time_balance
-                    seeder.seeding_time_balance += additional_time
-                    seeder.total_seeding_time += additional_time
+                    seeder.player_name = player_name
+                    seeder.seeding_time_balance += self.reward_time
+                    seeder.total_seeding_time += self.reward_time
                     seeder.last_seed_check = datetime.now(timezone.utc)
 
                     try:
