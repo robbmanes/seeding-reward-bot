@@ -41,12 +41,18 @@ class HLL_Player(Model):
     Model representing a player <=> discord relationship.
     """
 
-    steam_id_64 = fields.TextField(description='Steam64Id for the player')
+    steam_id_64 = fields.TextField(description="Steam64Id for the player")
     player_name = fields.TextField(description="Player's stored name", null=True)
-    discord_id = fields.TextField(description='Discord ID for player', null=True)
-    seeding_time_balance = fields.TimeDeltaField(description='Amount of unspent seeding hours')
-    total_seeding_time = fields.TimeDeltaField(description='Total amount of time player has spent seeding')
-    last_seed_check = fields.DatetimeField(description='Last time the seeder was seen during a seed check')
+    discord_id = fields.TextField(description="Discord ID for player", null=True)
+    seeding_time_balance = fields.TimeDeltaField(
+        description="Amount of unspent seeding hours"
+    )
+    total_seeding_time = fields.TimeDeltaField(
+        description="Total amount of time player has spent seeding"
+    )
+    last_seed_check = fields.DatetimeField(
+        description="Last time the seeder was seen during a seed check"
+    )
 
     def __str__(self):
         if self.player_name is not None:

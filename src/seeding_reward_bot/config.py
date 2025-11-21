@@ -2,8 +2,7 @@ import logging
 import tomllib
 
 
-class Configuration(object):
-
+class Configuration:
     def __init__(self, config_file="config.toml"):
         self.logger = logging.getLogger(__package__)
         self.config_file = config_file
