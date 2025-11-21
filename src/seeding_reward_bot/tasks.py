@@ -96,20 +96,20 @@ class BotTasks(commands.Cog):
             # Iterate through current players and accumulate their seeding time
             for player in player_list:
                 player_name = player["name"]
-                steam_id_64 = player["player_id"]
+                player_id = player["player_id"]
                 self.logger.debug(
-                    f'Processing seeding record for player "{player_name}/{steam_id_64}"'
+                    f'Processing seeding record for player "{player_name}/{player_id}"'
                 )
                 seeder_query = await HLL_Player.filter(
-                    steam_id_64__contains=player["player_id"]
+                    player_id__contains=player["player_id"]
                 )
                 if not seeder_query:
                     # New seeder, make a record
                     self.logger.debug(
-                        f'Generating new seeder record for "{player_name}/{steam_id_64}"'
+                        f'Generating new seeder record for "{player_name}/{player_id}"'
                     )
                     s = HLL_Player(
-                        steam_id_64=steam_id_64,
+                        player_id=player_id,
                         player_name=player_name,
                         discord_id=None,
                         seeding_time_balance=self.reward_time,
@@ -118,9 +118,7 @@ class BotTasks(commands.Cog):
                     )
                     await s.save()
                 elif len(seeder_query) != 1:
-                    self.logger.error(
-                        f'Multiple steam64id\'s found for "{steam_id_64}"!'
-                    )
+                    self.logger.error(f'Multiple Player ID\'s found for "{player_id}"!')
                 else:
                     # Account for seeding time for player
                     seeder = seeder_query[0]
@@ -132,7 +130,7 @@ class BotTasks(commands.Cog):
 
                     try:
                         self.logger.debug(
-                            f'Updating record for "{seeder.player_name}/{seeder.steam_id_64}" to new total "{seeder.total_seeding_time}" (new seeding balance "{seeder.seeding_time_balance}")'
+                            f'Updating record for "{seeder.player_name}/{seeder.player_id}" to new total "{seeder.total_seeding_time}" (new seeding balance "{seeder.seeding_time_balance}")'
                         )
                         await seeder.save()
                         self.logger.debug(
@@ -149,12 +147,10 @@ class BotTasks(commands.Cog):
 
                     if new_hourly > old_hourly:
                         self.logger.debug(
-                            f'Player "{seeder.player_name}/{seeder.steam_id_64}" has gained 1 hour seeder rewards'
+                            f'Player "{seeder.player_name}/{seeder.player_id}" has gained 1 hour seeder rewards'
                         )
                         tg.create_task(
-                            self.send_seeding_message(
-                                rcon_server_url, seeder.steam_id_64
-                            )
+                            self.send_seeding_message(rcon_server_url, seeder.player_id)
                         )
 
             self.logger.debug(f'Seeder status updated for server "{rcon_server_url}"')
