@@ -10,6 +10,10 @@ from seeding_reward_bot.config import global_config
 from seeding_reward_bot.db import HLL_Player
 
 
+def get_command_mention(cmd):
+    return f"</{cmd.qualified_name}:{cmd.qualified_id}>"
+
+
 class BotCommands(commands.Cog):
     """
     Cog to manage discord interactions.
@@ -97,7 +101,7 @@ class BotCommands(commands.Cog):
         query_result = await HLL_Player.filter(discord_id=ctx.author.id)
         if len(query_result) == 0:
             await ctx.respond(
-                f"Your Discord ID doesn't match any known `player_id`. Use `/hll register` to tie your ID to your discord.",
+                f"Your Discord ID doesn't match any known `player_id`. Use {get_command_mention(self.register)} to tie your ID to your discord.",
                 ephemeral=True,
             )
             return
@@ -108,7 +112,7 @@ class BotCommands(commands.Cog):
         message += (
             f"\n 🕰️ Last seeding time: <t:{int(player.last_seed_check.timestamp())}:R>"
         )
-        message += f"\n ℹ️ Turn your seeding hours into VIP time with `/hll claim`. One hour of seeding = {global_config['hell_let_loose']['seeder_vip_reward_hours']} hour(s) of VIP."
+        message += f"\n ℹ️ Turn your seeding hours into VIP time with {get_command_mention(self.claim)}. One hour of seeding = {global_config['hell_let_loose']['seeder_vip_reward_hours']} hour(s) of VIP."
         await ctx.respond(message, ephemeral=True)
 
     @hll.command()
@@ -120,7 +124,7 @@ class BotCommands(commands.Cog):
         player = await HLL_Player.by_discord_id(ctx.author.id)
         if player is None:
             await ctx.respond(
-                f"Your Discord ID doesn't match any known `player_id`. Use `/hll register` to tie your ID to your discord.",
+                f"Your Discord ID doesn't match any known `player_id`. Use {get_command_mention(self.register)} to tie your ID to your discord.",
                 ephemeral=True,
             )
             return
@@ -191,20 +195,20 @@ class BotCommands(commands.Cog):
         if hours is None:
             vip_value = global_config["hell_let_loose"]["seeder_vip_reward_hours"]
             message = f"{ctx.author.mention}:"
-            message += (
-                f"\n💵 Use `/hll claim $HOURS` to turn seeding hours into VIP status."
-            )
+            message += f"\n💵 Use {get_command_mention(self.claim)} `$HOURS` to turn seeding hours into VIP status."
             message += (
                 f"\n🚜 One hour of seeding time is `{vip_value}` hour(s) of VIP status."
             )
-            message += f"\nℹ️ Check your seeding hours with `/hll seeder`."
+            message += (
+                f"\nℹ️ Check your seeding hours with {get_command_mention(self.seeder)}."
+            )
             await ctx.respond(message, ephemeral=True)
             return
         else:
             player = await HLL_Player.by_discord_id(ctx.author.id)
             if player is None:
                 message = f"{ctx.author.mention}: Can't find your ID to claim VIP."
-                message += f"\nMake sure you have run `/hll register` and registered your Player ID and Discord."
+                message += f"\nMake sure you have run {get_command_mention(self.register)} and registered your Player ID and Discord."
                 await ctx.respond(message, ephemeral=True)
                 return
             else:
@@ -316,25 +320,27 @@ class BotCommands(commands.Cog):
         if hours is None:
             vip_value = global_config["hell_let_loose"]["seeder_vip_reward_hours"]
             message = f"{ctx.author.mention}:"
-            message += f"\n💵 Use `/hll gift $USER $HOURS` to grant other players seeding hours."
+            message += f"\n💵 Use {get_command_mention(self.gift)} `$USER` `$HOURS` to grant other players seeding hours."
             message += (
                 f"\n🚜 One hour of seeding time is `{vip_value}` hour(s) of VIP status."
             )
-            message += f"\nℹ️ Check your seeding hours with `/hll seeder`."
+            message += (
+                f"\nℹ️ Check your seeding hours with {get_command_mention(self.seeder)}."
+            )
             await ctx.respond(message, ephemeral=True)
             return
         else:
             receiver = await HLL_Player.by_discord_id(receiver_discord_user.id)
             if receiver is None:
                 await ctx.respond(
-                    f"No information in database for user {receiver_discord_user} ({receiver_discord_user.id}) via `player_id`. Inform them to use `/hll register` to tie their ID to their discord.",
+                    f"No information in database for user {receiver_discord_user} ({receiver_discord_user.id}) via `player_id`. Inform them to use {get_command_mention(self.register)} to tie their ID to their discord.",
                     ephemeral=True,
                 )
                 return
             gifter = await HLL_Player.by_discord_id(ctx.author.id)
             if gifter is None:
                 message = f"{ctx.author.mention}: Can't find your ID to claim VIP."
-                message += f"\nMake sure you have run `/hll register` and registered your Player ID and Discord."
+                message += f"\nMake sure you have run {get_command_mention(self.register)} and registered your Player ID and Discord."
                 await ctx.respond(message, ephemeral=True)
                 return
 
@@ -364,7 +370,7 @@ class BotCommands(commands.Cog):
 
                 if ctx.channel is not None:
                     await ctx.channel.send(
-                        f"{ctx.author.mention} just gifted `{hours}` hours of VIP seeding time to {receiver_discord_user.mention}!  Use `/hll seeder` to check your balance."
+                        f"{ctx.author.mention} just gifted `{hours}` hours of VIP seeding time to {receiver_discord_user.mention}!  Use {get_command_mention(self.seeder)} to check your balance."
                     )
 
                 await ctx.respond(message, ephemeral=True)
@@ -391,7 +397,7 @@ class BotCommands(commands.Cog):
         player = await HLL_Player.by_discord_id(user.id)
         if player is None:
             await ctx.respond(
-                f"User {user} ({user.id}) ID doesn't match any known `player_id`. Inform them to use `/hll register` to tie their ID to their discord.",
+                f"User {user} ({user.id}) ID doesn't match any known `player_id`. Inform them to use {get_command_mention(self.register)} to tie their ID to their discord.",
                 ephemeral=True,
             )
             return
@@ -425,7 +431,7 @@ class BotCommands(commands.Cog):
         player = await HLL_Player.by_discord_id(user.id)
         if player is None:
             await ctx.respond(
-                f"No information in database for user {user} ({user.id}) via `player_id`. Inform them to use `/hll register` to tie their ID to their discord.",
+                f"No information in database for user {user} ({user.id}) via `player_id`. Inform them to use {get_command_mention(self.register)} to tie their ID to their discord.",
                 ephemeral=True,
             )
             return
