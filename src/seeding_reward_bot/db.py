@@ -41,7 +41,7 @@ class HLL_Player(Model):
     Model representing a player <=> discord relationship.
     """
 
-    steam_id_64 = fields.TextField(description="Steam64Id for the player")
+    player_id = fields.TextField(description="Player ID for the player")
     player_name = fields.TextField(description="Player's stored name", null=True)
     discord_id = fields.TextField(description="Discord ID for player", null=True)
     seeding_time_balance = fields.TimeDeltaField(
@@ -58,11 +58,11 @@ class HLL_Player(Model):
         if self.player_name is not None:
             return self.player_name
         else:
-            return self.steam_id_64
+            return self.player_id
 
     async def by_discord_id(discord_id):
         """
-        Performs a lookup for a user based on their steam_64_id <=> discord_id.
+        Performs a lookup for a user based on their player_id <=> discord_id.
         If no result, None is returned indicating the user has no entry or hasn't registered.
         """
         query_set = await HLL_Player.filter(discord_id__contains=discord_id)

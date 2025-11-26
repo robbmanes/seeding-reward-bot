@@ -105,13 +105,13 @@ class HLL_RCON_Client:
         return await self.request_rcon("POST", server, query, json)
 
     @for_each_rcon
-    async def grant_vip(self, rcon_server_url, name, steam_id_64, expiration):
+    async def grant_vip(self, rcon_server_url, name, player_id, expiration):
         """
         Add a new VIP entry to the RCON instances or update an existing entry.
 
         Must supply the RCON server arguments:
         name -- user's name in RCON
-        steam_id_64 -- user's `steam64id`
+        player_id -- user's `Player ID`
         expiration -- time VIP expires
 
         Returns True for success, False for failure.
@@ -122,7 +122,7 @@ class HLL_RCON_Client:
                 "add_vip",
                 {
                     "description": name,
-                    "player_id": str(steam_id_64),
+                    "player_id": str(player_id),
                     "expiration": expiration.isoformat(timespec="seconds"),
                 },
             )
@@ -130,43 +130,43 @@ class HLL_RCON_Client:
             self.logger.exception(f'Failed to update VIP user on "{rcon_server_url}"')
             return False
         self.logger.debug(
-            f'Granted VIP to user "{name}/{steam_id_64}", expiration {expiration}'
+            f'Granted VIP to user "{name}/{player_id}", expiration {expiration}'
         )
         return True
 
     # @for_each_rcon
-    # async def revoke_vip(self, rcon_server_url, client, name, steam_id_64):
+    # async def revoke_vip(self, rcon_server_url, client, name, player_id):
     #    """Completely remove a VIP entry from the RCON instances."""
     #    response = await client.post(
     #        '%s/api/remove_vip' % (rcon_server_url),
     #        json={
-    #            'player_id': steam_id_64,
+    #            'player_id': player_id,
     #        },
     #        timeout=self.global_timeout,
     #    )
     #    result = response.json()
     #    if result['result'] == 'SUCCESS':
-    #        self.logger.debug(f'Revoked VIP for user {name}/{steam_id_64}')
+    #        self.logger.debug(f'Revoked VIP for user {name}/{player_id}')
     #        return True
     #    else:
     #        self.logger.error(f'Failed to remove VIP user on "{rcon_server_url}": {result}')
     #        return False
 
     @for_each_rcon
-    async def get_vip(self, rcon_server_url, steam_id_64):
+    async def get_vip(self, rcon_server_url, player_id):
         """
         Queries the RCON server for all VIP's, and returns a single VIP object
-        based on the input steam64id.
+        based on the input player_id.
         """
         vip_list = await self.get_rcon(rcon_server_url, "get_vip_ids")
         for vip in vip_list:
             # Work around for https://github.com/MarechJ/hll_rcon_tool/issues/248
             # We need to verify numerical input
             try:
-                if vip["player_id"] == steam_id_64:
+                if vip["player_id"] == player_id:
                     return vip["vip_expiration"]
             except ValueError as e:
-                self.logger.error(f"Improper steam ID for VIP entry from RCON: {e}")
+                self.logger.error(f"Improper Player ID for VIP entry from RCON: {e}")
                 self.logger.error(f"Failed entry: {vip}")
                 continue
         return None
@@ -183,7 +183,7 @@ class HLL_RCON_Client:
         return []
 
     @for_single_rcon
-    async def send_player_message(self, rcon_server_url, steam_id_64, message):
+    async def send_player_message(self, rcon_server_url, player_id, message):
         """
         Send a player a message via the RCON.
 
@@ -200,7 +200,7 @@ class HLL_RCON_Client:
                 rcon_server_url,
                 "message_player",
                 {
-                    "player_id": steam_id_64,
+                    "player_id": player_id,
                     "message": message,
                 },
             ):
@@ -208,5 +208,5 @@ class HLL_RCON_Client:
         except:
             self.logger.exception("An Exception occurred while messaging player")
         else:
-            self.logger.error(f"Failed sending message to user {steam_id_64}: {result}")
+            self.logger.error(f"Failed sending message to user {player_id}: {result}")
         return False

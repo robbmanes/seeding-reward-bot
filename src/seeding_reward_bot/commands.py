@@ -38,7 +38,7 @@ class BotCommands(commands.Cog):
         await ctx.defer(ephemeral=True)
 
         # See if the user already has an entry
-        query_result = await HLL_Player.filter(steam_id_64=player_id)
+        query_result = await HLL_Player.filter(player_id=player_id)
         if len(query_result) > 1:
             self.logger.error(
                 "Player lookup during player_id returned multiple results:"
@@ -127,7 +127,7 @@ class BotCommands(commands.Cog):
 
         # We need to ensure we get the same VIP states for both RCON's.
         try:
-            vip_dict = await self.client.get_vip(player.steam_id_64)
+            vip_dict = await self.client.get_vip(player.player_id)
         except:
             await ctx.respond(
                 f"{ctx.author.mention}: There was an error fetching your VIP status from one of the servers, try again later",
@@ -204,7 +204,7 @@ class BotCommands(commands.Cog):
             player = await HLL_Player.by_discord_id(ctx.author.id)
             if player is None:
                 message = f"{ctx.author.mention}: Can't find your ID to claim VIP."
-                message += f"\nMake sure you have run `/hll register` and registered your Steam and Discord."
+                message += f"\nMake sure you have run `/hll register` and registered your Player ID and Discord."
                 await ctx.respond(message, ephemeral=True)
                 return
             else:
@@ -212,7 +212,7 @@ class BotCommands(commands.Cog):
                     hours=1
                 )
                 self.logger.debug(
-                    f'User "{ctx.author.name}/{player.steam_id_64}" is attempting to claim {hours} seeder hours from their total of {player_seeding_time_hours:,}'
+                    f'User "{ctx.author.name}/{player.player_id}" is attempting to claim {hours} seeder hours from their total of {player_seeding_time_hours:,}'
                 )
                 if hours > player_seeding_time_hours:
                     await ctx.respond(
@@ -223,7 +223,7 @@ class BotCommands(commands.Cog):
                 else:
                     # Check the previous VIP values from both RCON's to ensure they are identical prior to proceeding
                     try:
-                        vip_dict = await self.client.get_vip(player.steam_id_64)
+                        vip_dict = await self.client.get_vip(player.player_id)
                     except:
                         await ctx.respond(
                             f"{ctx.author.mention}: There was an error fetching your current VIP status from one of the servers, try again later",
@@ -268,7 +268,7 @@ class BotCommands(commands.Cog):
                     else:
                         # Make sure all RCON grants are successful.
                         result_dict = await self.client.grant_vip(
-                            player.player_name, player.steam_id_64, expiration
+                            player.player_name, player.player_id, expiration
                         )
                         for rcon, result in result_dict.items():
                             if result is False:
@@ -334,7 +334,7 @@ class BotCommands(commands.Cog):
             gifter = await HLL_Player.by_discord_id(ctx.author.id)
             if gifter is None:
                 message = f"{ctx.author.mention}: Can't find your ID to claim VIP."
-                message += f"\nMake sure you have run `/hll register` and registered your Steam and Discord."
+                message += f"\nMake sure you have run `/hll register` and registered your Player ID and Discord."
                 await ctx.respond(message, ephemeral=True)
                 return
 
@@ -396,7 +396,7 @@ class BotCommands(commands.Cog):
             )
             return
         self.logger.info(
-            f'User "{player.discord_id}/{player.steam_id_64}" is being granted {hours} seeder hours by discord user {ctx.author.mention}.'
+            f'User "{player.discord_id}/{player.player_id}" is being granted {hours} seeder hours by discord user {ctx.author.mention}.'
         )
 
         old_seed_balance = player.seeding_time_balance
@@ -430,12 +430,12 @@ class BotCommands(commands.Cog):
             )
             return
         self.logger.debug(
-            f'User {ctx.author.mention} is inspecting player data for "{player.discord_id}/{player.steam_id_64}"'
+            f'User {ctx.author.mention} is inspecting player data for "{player.discord_id}/{player.player_id}"'
         )
 
         # TODO: Merge this into a method with "grant"
         try:
-            vip_dict = await self.client.get_vip(player.steam_id_64)
+            vip_dict = await self.client.get_vip(player.player_id)
         except:
             await ctx.respond(
                 f"{ctx.author.mention}: There was an error fetching the current VIP status for user {user}/{user.id} from one of the servers, try again later",
