@@ -1,7 +1,5 @@
 import asyncio
 import logging
-from datetime import datetime
-from enum import StrEnum
 
 import httpx
 import stamina
@@ -69,7 +67,7 @@ class HLL_RCON_Client:
                         tasks[rcon_server_url] = tg.create_task(
                             fn(self, rcon_server_url, *args)
                         )
-            except Exception as e:
+            except Exception:
                 raise
             # We need to check if the return value is identical for each RCON.
             # If it is not, error/alert to avoid deviant behavior.
@@ -117,7 +115,7 @@ class HLL_RCON_Client:
         Returns True for success, False for failure.
         """
         try:
-            result = await self.post_rcon(
+            await self.post_rcon(
                 rcon_server_url,
                 "add_vip",
                 {
@@ -126,7 +124,7 @@ class HLL_RCON_Client:
                     "expiration": expiration.isoformat(timespec="seconds"),
                 },
             )
-        except:
+        except Exception:
             self.logger.exception(f'Failed to update VIP user on "{rcon_server_url}"')
             return False
         self.logger.debug(
@@ -178,7 +176,7 @@ class HLL_RCON_Client:
         """
         try:
             return await self.get_rcon(rcon_server_url, "get_players")
-        except:
+        except Exception:
             self.logger.exception(f"get_players failed for {rcon_server_url}")
         return []
 
@@ -205,8 +203,8 @@ class HLL_RCON_Client:
                 },
             ):
                 return True
-        except:
+        except Exception:
             self.logger.exception("An Exception occurred while messaging player")
         else:
-            self.logger.error(f"Failed sending message to user {player_id}: {result}")
+            self.logger.error(f"Failed sending message to user {player_id}")
         return False

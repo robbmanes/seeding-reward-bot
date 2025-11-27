@@ -1,8 +1,6 @@
-import asyncio
 import logging
 import os
 import sys
-import traceback
 
 import discord
 
@@ -47,7 +45,7 @@ def run_discord_bot():
     try:
         bot.guild_ids = []
         bot.guild_ids.append(global_config["discord"]["discord_guild_id"])
-    except KeyError as e:
+    except KeyError:
         logger.info("No guild ID's configured, proceeding...")
         pass
 

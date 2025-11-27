@@ -1,10 +1,10 @@
 import logging
-from datetime import datetime, time, timedelta, timezone
+from datetime import datetime, timedelta, timezone
 
 import discord
 from discord import guild_only
 from discord.commands import Option, SlashCommandGroup
-from discord.ext import commands, tasks
+from discord.ext import commands
 
 from seeding_reward_bot.config import global_config
 from seeding_reward_bot.db import HLL_Player
@@ -48,7 +48,7 @@ class BotCommands(commands.Cog):
                 "Player lookup during player_id returned multiple results:"
             )
             await ctx.respond(
-                f"Found multiple players with that `player_id` - that shouldn't happen! Please contact an administrator.",
+                "Found multiple players with that `player_id` - that shouldn't happen! Please contact an administrator.",
                 ephemeral=True,
             )
             return
@@ -78,7 +78,7 @@ class BotCommands(commands.Cog):
                 return
             elif player.discord_id == ctx.author.id:
                 await ctx.respond(
-                    f"That `player_id` is already registered to you!", ephemeral=True
+                    "That `player_id` is already registered to you!", ephemeral=True
                 )
                 return
             else:
@@ -86,7 +86,7 @@ class BotCommands(commands.Cog):
                     f"Discord user {ctx.author.name} attempted to register player_id `{player_id}` but it is already owned by Discord user {player.discord_id}"
                 )
                 await ctx.respond(
-                    f"That `player_id` is already registered to someone else.",
+                    "That `player_id` is already registered to someone else.",
                     ephemeral=True,
                 )
                 return
@@ -132,7 +132,7 @@ class BotCommands(commands.Cog):
         # We need to ensure we get the same VIP states for both RCON's.
         try:
             vip_dict = await self.client.get_vip(player.player_id)
-        except:
+        except Exception:
             await ctx.respond(
                 f"{ctx.author.mention}: There was an error fetching your VIP status from one of the servers, try again later",
                 ephemeral=True,
@@ -228,7 +228,7 @@ class BotCommands(commands.Cog):
                     # Check the previous VIP values from both RCON's to ensure they are identical prior to proceeding
                     try:
                         vip_dict = await self.client.get_vip(player.player_id)
-                    except:
+                    except Exception:
                         await ctx.respond(
                             f"{ctx.author.mention}: There was an error fetching your current VIP status from one of the servers, try again later",
                             ephemeral=True,
@@ -293,7 +293,7 @@ class BotCommands(commands.Cog):
                         )
 
                     message += f"\nYour remaining seeder balance is `{player.seeding_time_balance // timedelta(hours=1):,}` hour(s)."
-                    message += f"\n💗 Thanks for seeding! 💗"
+                    message += "\n💗 Thanks for seeding! 💗"
                     await player.save()
                     await ctx.respond(message, ephemeral=True)
                     return
@@ -364,7 +364,7 @@ class BotCommands(commands.Cog):
                 message = ""
                 message += f"{ctx.author.mention}: You've added `{hours}` hour(s) to {receiver_discord_user.mention}'s seeding bank."
                 message += f"\nYour remaining seeder balance is `{gifter.seeding_time_balance // timedelta(hours=1):,}` hour(s)."
-                message += f"\n💗 Thanks for seeding! 💗"
+                message += "\n💗 Thanks for seeding! 💗"
                 await gifter.save()
                 await receiver.save()
 
@@ -442,7 +442,7 @@ class BotCommands(commands.Cog):
         # TODO: Merge this into a method with "grant"
         try:
             vip_dict = await self.client.get_vip(player.player_id)
-        except:
+        except Exception:
             await ctx.respond(
                 f"{ctx.author.mention}: There was an error fetching the current VIP status for user {user}/{user.id} from one of the servers, try again later",
                 ephemeral=True,
@@ -461,7 +461,7 @@ class BotCommands(commands.Cog):
 
         message = f'Data for user "<@{user}>/{user.id}"'
         if vip is None:
-            message += f"\nVIP expiration: user has no active VIP via the RCON server."
+            message += "\nVIP expiration: user has no active VIP via the RCON server."
         else:
             expiration = datetime.fromisoformat(vip)
             message += f"\nVIP expiration: <t:{int(expiration.timestamp())}:R>"
@@ -489,7 +489,7 @@ class BotCommands(commands.Cog):
             if global_config["seedbot"]["maintainer_discord_ids"]:
                 try:
                     message += (
-                        f"\nPlease contact the following maintainers/administrators:"
+                        "\nPlease contact the following maintainers/administrators:"
                     )
                     for maintainer in global_config["seedbot"][
                         "maintainer_discord_ids"
@@ -499,7 +499,7 @@ class BotCommands(commands.Cog):
                     self.logger.error(
                         f"Failed to get maintainers from configuration: {e}"
                     )
-            message += f"\nThe following might help determine what the problem is:"
+            message += "\nThe following might help determine what the problem is:"
             message += f"\n`{error}`"
             await ctx.respond(message, ephemeral=True)
             raise error

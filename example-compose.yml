@@ -1,4 +1,3 @@
-name: seeding-reward-bot
 services:
   seeding-reward-bot:
     volumes:
