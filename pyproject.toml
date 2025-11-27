@@ -17,6 +17,11 @@ dependencies = [
     "tortoise-orm[asyncpg]>=0.25.1",
 ]
 
+[dependency-groups]
+dev = [
+    "ruff>=0.14.6",
+]
+
 [project.scripts]
 seedbot = "seeding_reward_bot.main:run_discord_bot"
 
@@ -28,3 +33,6 @@ build-backend = "uv_build"
 tortoise_orm = "seeding_reward_bot.db.TORTOISE_ORM"
 location = "./migrations"
 src_folder = "./."
+
+[tool.ruff.lint]
+extend-select = ["I"]
