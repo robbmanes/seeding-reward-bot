@@ -108,7 +108,6 @@ class BotTasks(commands.Cog):
                     s = HLL_Player(
                         player_id=player_id,
                         player_name=player_name,
-                        discord_id=None,
                         seeding_time_balance=self.reward_time,
                         total_seeding_time=self.reward_time,
                         last_seed_check=datetime.now(timezone.utc),

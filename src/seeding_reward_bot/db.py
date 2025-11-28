@@ -41,7 +41,7 @@ class HLL_Player(Model):
 
     player_id = fields.TextField(description="Player ID for the player")
     player_name = fields.TextField(description="Player's stored name", null=True)
-    discord_id = fields.TextField(description="Discord ID for player", null=True)
+    discord_id = fields.BigIntField(description="Discord ID for player", null=True)
     seeding_time_balance = fields.TimeDeltaField(
         description="Amount of unspent seeding hours"
     )
