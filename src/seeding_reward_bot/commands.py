@@ -2,15 +2,28 @@ import logging
 from datetime import datetime, timedelta, timezone
 
 import discord
-from discord import guild_only
+from discord import ApplicationCommandInvokeError, guild_only
 from discord.commands import Option, SlashCommandGroup
 from discord.ext import commands
+from tortoise.exceptions import DoesNotExist, MultipleObjectsReturned
 
 from seeding_reward_bot.config import global_config
 from seeding_reward_bot.db import HLL_Player
 
 
-def get_command_mention(cmd):
+class EphemeralError(Exception):
+    pass
+
+
+class EphemeralMentionError(EphemeralError):
+    pass
+
+
+class EphemeralAdminError(EphemeralError):
+    pass
+
+
+def command_mention(cmd):
     return f"</{cmd.qualified_name}:{cmd.qualified_id}>"
 
 
@@ -19,13 +32,61 @@ class BotCommands(commands.Cog):
     Cog to manage discord interactions.
     """
 
-    hll = SlashCommandGroup("hll")
-    hll_admin = SlashCommandGroup("hll-admin")
+    hll = SlashCommandGroup("hll", "Seeding commands")
+    hll_admin = SlashCommandGroup("hll-admin", "Admin seeding commands")
 
     def __init__(self, bot):
         self.bot = bot
         self.client = bot.client
         self.logger = logging.getLogger(__name__)
+
+    async def get_player_by_player_id(self, player_id):
+        try:
+            return await HLL_Player.get(player_id=player_id)
+        except MultipleObjectsReturned:
+            raise EphemeralAdminError(f"Found multiple players for {player_id=}")
+        except DoesNotExist:
+            raise EphemeralMentionError(
+                f"There is no record for that Player ID `{player_id}`; please make sure you have seeded on our servers previously and enter your Player ID (found in the top right of OPTIONS in game) to register.  Please open a ticket for additional help."
+            )
+
+    async def get_player_by_discord_id(self, discord_id, other=False):
+        try:
+            return await HLL_Player.get(discord_id=discord_id)
+        except MultipleObjectsReturned:
+            raise EphemeralAdminError(f"Multiple discord_id's found for {discord_id=}")
+        except DoesNotExist:
+            message = f"Discord ID <@{discord_id}> is not registered. "
+            if not other:
+                message += f"Use {command_mention(self.register)} to tie your Player ID to your discord."
+            else:
+                message += f"Inform them to use {command_mention(self.register)} to tie their Player ID to their discord."
+            raise EphemeralError(message)
+
+    async def get_vip_by_discord_id(self, discord_id, other=False):
+        player = await self.get_player_by_discord_id(discord_id, other)
+
+        # We need to ensure we get the same VIP states for both RCON's.
+        try:
+            vip_dict = await self.client.get_vip(player.player_id)
+        except Exception:
+            if other:
+                raise EphemeralMentionError(
+                    f"There was an error fetching the current VIP status for user <@{discord_id}> from one of the servers, try again later"
+                )
+            raise EphemeralMentionError(
+                "There was an error fetching your current VIP status from one of the servers, try again later"
+            )
+
+        vip_set = set(vip_dict.values())
+        if len(vip_set) != 1:
+            # VIP from all RCON's didn't match, notify.
+            raise EphemeralAdminError(
+                f"VIP status is different between servers for {player.player_id=}"
+            )
+
+        # All is well, return to the (identical) first in the list
+        return vip_set.pop(), player
 
     @hll.command()
     async def register(
@@ -41,143 +102,72 @@ class BotCommands(commands.Cog):
 
         await ctx.defer(ephemeral=True)
 
-        # See if the user already has an entry
-        query_result = await HLL_Player.filter(player_id=player_id)
-        if len(query_result) > 1:
-            self.logger.error(
-                "Player lookup during player_id returned multiple results:"
-            )
-            await ctx.respond(
-                "Found multiple players with that `player_id` - that shouldn't happen! Please contact an administrator.",
-                ephemeral=True,
-            )
-            return
-        elif len(query_result) == 0:
-            # No entry found, provide an error message and instructions to play first
+        player = await self.get_player_by_player_id(player_id)
+
+        if player.discord_id == ctx.author.id:
+            raise EphemeralError("That `player_id` is already registered to you!")
+        elif player.discord_id:
             self.logger.debug(
-                f"Discord user {ctx.author.name} attempted to register player_id `{player_id}`, denied due to no record"
+                f"Discord user {ctx.author.name}/{ctx.author.id} attempted to register player_id `{player_id}` but it is already owned by Discord user {player.discord_id}"
             )
-            await ctx.respond(
-                f"{ctx.author.mention}: I don't see a record for that ID; please make sure you have seeded on our servers previously and enter your Player ID (found in the top right of OPTIONS in game) to register.  Please open a ticket for additional help.",
-                ephemeral=True,
+            raise EphemeralError(
+                "That `player_id` is already registered to someone else."
             )
-            return
-        elif len(query_result) == 1:
-            # Found one existing entry
-            player = query_result[0]
-            if player.discord_id is None:
-                player.discord_id = ctx.author.id
-                await player.save()
-                self.logger.debug(
-                    f"Updated user {ctx.author.mention} with player_id `{player_id}`"
-                )
-                await ctx.respond(
-                    f"{ctx.author.mention}: I've registered your `player_id` to your Discord account. Thanks!",
-                    ephemeral=True,
-                )
-                return
-            elif player.discord_id == ctx.author.id:
-                await ctx.respond(
-                    "That `player_id` is already registered to you!", ephemeral=True
-                )
-                return
-            else:
-                self.logger.debug(
-                    f"Discord user {ctx.author.name} attempted to register player_id `{player_id}` but it is already owned by Discord user {player.discord_id}"
-                )
-                await ctx.respond(
-                    "That `player_id` is already registered to someone else.",
-                    ephemeral=True,
-                )
-                return
-        else:
-            raise
+
+        player.discord_id = ctx.author.id
+        await player.save()
+        self.logger.debug(
+            f"Updated user {ctx.author.name}/{ctx.author.id} with player_id `{player_id}`"
+        )
+        await ctx.respond(
+            f"{ctx.author.mention}: I've registered your `player_id` to your Discord account. Thanks!",
+            ephemeral=True,
+        )
 
     @hll.command()
     async def seeder(self, ctx: discord.ApplicationContext):
         """Check your seeding statistics"""
 
         await ctx.defer(ephemeral=True)
-        query_result = await HLL_Player.filter(discord_id=ctx.author.id)
-        if len(query_result) == 0:
-            await ctx.respond(
-                f"Your Discord ID doesn't match any known `player_id`. Use {get_command_mention(self.register)} to tie your ID to your discord.",
-                ephemeral=True,
-            )
-            return
-        player = query_result[0]
-        message = f"Seeding stats for {ctx.author.mention}:"
-        message += f"\n 🌱 Total seeding time (hours): `{player.total_seeding_time}`"
-        message += f"\n 🏦 Unspent seeding time balance (hours): `{player.seeding_time_balance // timedelta(hours=1):,}`"
-        message += (
-            f"\n 🕰️ Last seeding time: <t:{int(player.last_seed_check.timestamp())}:R>"
+
+        player = await self.get_player_by_discord_id(ctx.author.id)
+
+        message = (
+            f"Seeding stats for {ctx.author.mention}:",
+            f" 🌱 Total seeding time (hours): `{player.total_seeding_time}`",
+            f" 🏦 Unspent seeding time balance (hours): `{player.seeding_time_balance // timedelta(hours=1):,}`",
+            f" 🕰️ Last seeding time: <t:{int(player.last_seed_check.timestamp())}:R>",
+            f" ℹ️ Turn your seeding hours into VIP time with {command_mention(self.claim)}. One hour of seeding = {global_config['hell_let_loose']['seeder_vip_reward_hours']} hour(s) of VIP.",
         )
-        message += f"\n ℹ️ Turn your seeding hours into VIP time with {get_command_mention(self.claim)}. One hour of seeding = {global_config['hell_let_loose']['seeder_vip_reward_hours']} hour(s) of VIP."
-        await ctx.respond(message, ephemeral=True)
+        await ctx.respond("\n".join(message), ephemeral=True)
 
     @hll.command()
     async def vip(self, ctx: discord.ApplicationContext):
         """Check your VIP status"""
 
         await ctx.defer(ephemeral=True)
+
         self.logger.debug(f"VIP query for `{ctx.author.id}/{ctx.author.name}`.")
-        player = await HLL_Player.by_discord_id(ctx.author.id)
-        if player is None:
-            await ctx.respond(
-                f"Your Discord ID doesn't match any known `player_id`. Use {get_command_mention(self.register)} to tie your ID to your discord.",
-                ephemeral=True,
-            )
-            return
 
-        # We need to ensure we get the same VIP states for both RCON's.
-        try:
-            vip_dict = await self.client.get_vip(player.player_id)
-        except Exception:
-            await ctx.respond(
-                f"{ctx.author.mention}: There was an error fetching your VIP status from one of the servers, try again later",
-                ephemeral=True,
-            )
-            return
-
-        vip_set = set(vip_dict.values())
-        if len(vip_set) != 1:
-            # VIP from all RCON's didn't match, notify.
-            await ctx.respond(
-                f"{ctx.author.mention}: It looks like your VIP status is different between servers, please contact an admin.",
-                ephemeral=True,
-            )
-            return
-
-        # All is well, return to the (identical) first in the list
-        vip = vip_set.pop()
+        vip, _ = await self.get_vip_by_discord_id(ctx.author.id)
 
         if vip is None:
-            await ctx.respond(
-                f"No VIP record found for {ctx.author.mention}.", ephemeral=True
-            )
-            return
+            message = f"No VIP record found for {ctx.author.mention}."
+        else:
+            expiration = datetime.fromisoformat(vip)
+            message = f"{ctx.author.mention}: your VIP "
+            if expiration < datetime.now(timezone.utc):
+                message += "appears to have expired."
+            elif expiration >= datetime(year=3000, month=1, day=1, tzinfo=timezone.utc):
+                # crcon uses UTC 3000-01-01 for indefinite VIP
+                #   and checks with >= to test for indefinite
+                # converting seeding hours is pointless in this case.
+                message += "does not expire!"
+            else:
+                # https://discord.com/developers/docs/reference#message-formatting-formats
+                message += f"expires <t:{int(expiration.timestamp())}:R>"
 
-        expiration = datetime.fromisoformat(vip)
-        if expiration < datetime.now(timezone.utc):
-            await ctx.respond(
-                f"{ctx.author.mention}: your VIP appears to have expired.",
-                ephemeral=True,
-            )
-            return
-        elif expiration >= datetime(year=3000, month=1, day=1, tzinfo=timezone.utc):
-            # crcon uses UTC 3000-01-01 for indefinite VIP
-            #   and checks with >= to test for indefinite
-            # converting seeding hours is pointless in this case.
-            await ctx.respond(
-                f"{ctx.author.mention}: Your VIP does not expire!", ephemeral=True
-            )
-            return
-
-        # https://discord.com/developers/docs/reference#message-formatting-formats
-        await ctx.respond(
-            f"{ctx.author.mention}: your VIP expires <t:{int(expiration.timestamp())}:R>",
-            ephemeral=True,
-        )
+        await ctx.respond(message, ephemeral=True)
 
     @hll.command()
     async def claim(
@@ -192,111 +182,68 @@ class BotCommands(commands.Cog):
     ):
         """Redeem seeding hours for VIP status"""
         await ctx.defer(ephemeral=True)
+
         if hours is None:
-            vip_value = global_config["hell_let_loose"]["seeder_vip_reward_hours"]
-            message = f"{ctx.author.mention}:"
-            message += f"\n💵 Use {get_command_mention(self.claim)} `$HOURS` to turn seeding hours into VIP status."
-            message += (
-                f"\n🚜 One hour of seeding time is `{vip_value}` hour(s) of VIP status."
+            message = (
+                f"{ctx.author.mention}:",
+                f"💵 Use {command_mention(self.claim)} `$HOURS` to turn seeding hours into VIP status.",
+                f"🚜 One hour of seeding time is `{global_config['hell_let_loose']['seeder_vip_reward_hours']}` hour(s) of VIP status.",
+                f"ℹ️ Check your seeding hours with {command_mention(self.seeder)}.",
             )
-            message += (
-                f"\nℹ️ Check your seeding hours with {get_command_mention(self.seeder)}."
+            raise EphemeralError("\n".join(message))
+
+        vip, player = await self.get_vip_by_discord_id(ctx.author.id)
+
+        player_seeding_time_hours = player.seeding_time_balance // timedelta(hours=1)
+        self.logger.debug(
+            f'User "{ctx.author.name}/{player.player_id}" is attempting to claim {hours} seeder hours from their total of {player_seeding_time_hours:,}'
+        )
+        if hours > player_seeding_time_hours:
+            raise EphemeralError(
+                f"{ctx.author.mention}: ❌ Sorry, not enough banked time to claim `{hours}` hour(s) of VIP (Currently have `{player_seeding_time_hours:,}` banked hours)."
             )
-            await ctx.respond(message, ephemeral=True)
-            return
+
+        grant_value = global_config["hell_let_loose"]["seeder_vip_reward_hours"] * hours
+        if vip is None:
+            # !!! vip expiration is in utc...
+            expiration = datetime.now(timezone.utc) + timedelta(hours=grant_value)
         else:
-            player = await HLL_Player.by_discord_id(ctx.author.id)
-            if player is None:
-                message = f"{ctx.author.mention}: Can't find your ID to claim VIP."
-                message += f"\nMake sure you have run {get_command_mention(self.register)} and registered your Player ID and Discord."
-                await ctx.respond(message, ephemeral=True)
-                return
-            else:
-                player_seeding_time_hours = player.seeding_time_balance // timedelta(
-                    hours=1
-                )
-                self.logger.debug(
-                    f'User "{ctx.author.name}/{player.player_id}" is attempting to claim {hours} seeder hours from their total of {player_seeding_time_hours:,}'
-                )
-                if hours > player_seeding_time_hours:
-                    await ctx.respond(
-                        f"{ctx.author.mention}: ❌ Sorry, not enough banked time to claim `{hours}` hour(s) of VIP (Currently have `{player_seeding_time_hours:,}` banked hours).",
-                        ephemeral=True,
+            # Check if current expiration is in the past.  If it is, set it to current time.
+            cur_expiration = datetime.fromisoformat(vip)
+            if cur_expiration < datetime.now(timezone.utc):
+                cur_expiration = datetime.now(timezone.utc)
+
+            expiration = cur_expiration + timedelta(hours=grant_value)
+
+        if expiration >= datetime(year=3000, month=1, day=1, tzinfo=timezone.utc):
+            # non-expiring vip... converting seeding hours is pointless...
+            message = ("Your VIP does not expire... no need to convert seeding hours!",)
+
+        else:
+            # Make sure all RCON grants are successful.
+            result_dict = await self.client.grant_vip(
+                player.player_name, player.player_id, expiration
+            )
+            for rcon, result in result_dict.items():
+                if result is False:
+                    raise EphemeralError(
+                        f"{ctx.author.mention}: There was a problem on one of the servers assigning your VIP."
                     )
-                    return
-                else:
-                    # Check the previous VIP values from both RCON's to ensure they are identical prior to proceeding
-                    try:
-                        vip_dict = await self.client.get_vip(player.player_id)
-                    except Exception:
-                        await ctx.respond(
-                            f"{ctx.author.mention}: There was an error fetching your current VIP status from one of the servers, try again later",
-                            ephemeral=True,
-                        )
-                        return
-                    vip_set = set(vip_dict.values())
-                    if len(vip_set) != 1:
-                        # VIP from all RCON's didn't match, notify.
-                        await ctx.respond(
-                            f"{ctx.author.mention}: It looks like your VIP status is different between servers, please contact an admin.",
-                            ephemeral=True,
-                        )
-                        return
 
-                    # All is well, return to the (identical) first in the list
-                    vip = vip_set.pop()
+            # !!! should only decrease banked seeding time if it is actually used...
+            player.seeding_time_balance -= timedelta(hours=hours)
 
-                    grant_value = (
-                        global_config["hell_let_loose"]["seeder_vip_reward_hours"]
-                        * hours
-                    )
-                    if vip is None:
-                        # !!! vip expiration is in utc...
-                        expiration = datetime.now(timezone.utc) + timedelta(
-                            hours=grant_value
-                        )
-                    else:
-                        # Check if current expiration is in the past.  If it is, set it to current time.
-                        cur_expiration = datetime.fromisoformat(vip)
-                        if cur_expiration < datetime.now(timezone.utc):
-                            cur_expiration = datetime.now(timezone.utc)
+            message = (
+                f"{ctx.author.mention}: You've added `{grant_value}` hour(s) to your VIP status.",
+                f"Your VIP expires <t:{int(expiration.timestamp())}:R>",
+            )
 
-                        expiration = cur_expiration + timedelta(hours=grant_value)
-
-                    message = ""
-                    if expiration >= datetime(
-                        year=3000, month=1, day=1, tzinfo=timezone.utc
-                    ):
-                        # non-expiring vip... converting seeding hours is pointless...
-                        message += "Your VIP does not expire... no need to convert seeding hours!"
-                    else:
-                        # Make sure all RCON grants are successful.
-                        result_dict = await self.client.grant_vip(
-                            player.player_name, player.player_id, expiration
-                        )
-                        for rcon, result in result_dict.items():
-                            if result is False:
-                                self.logger.error(
-                                    f'Problem assigning VIP in `claim` for "{rcon}": {result}'
-                                )
-                                await ctx.respond(
-                                    f"{ctx.author.mention}: There was a problem on one of the servers assigning your VIP."
-                                )
-                                return
-
-                        # !!! should only decrease banked seeding time if it is actually used...
-                        player.seeding_time_balance -= timedelta(hours=hours)
-
-                        message += f"{ctx.author.mention}: You've added `{grant_value}` hour(s) to your VIP status."
-                        message += (
-                            f"\nYour VIP expires <t:{int(expiration.timestamp())}:R>"
-                        )
-
-                    message += f"\nYour remaining seeder balance is `{player.seeding_time_balance // timedelta(hours=1):,}` hour(s)."
-                    message += "\n💗 Thanks for seeding! 💗"
-                    await player.save()
-                    await ctx.respond(message, ephemeral=True)
-                    return
+        message += (
+            f"Your remaining seeder balance is `{player.seeding_time_balance // timedelta(hours=1):,}` hour(s).",
+            "💗 Thanks for seeding! 💗",
+        )
+        await player.save()
+        await ctx.respond("\n".join(message), ephemeral=True)
 
     @hll.command()
     @guild_only()
@@ -318,63 +265,43 @@ class BotCommands(commands.Cog):
         """Gift VIP to another player"""
         await ctx.defer(ephemeral=True)
         if hours is None:
-            vip_value = global_config["hell_let_loose"]["seeder_vip_reward_hours"]
-            message = f"{ctx.author.mention}:"
-            message += f"\n💵 Use {get_command_mention(self.gift)} `$USER` `$HOURS` to grant other players seeding hours."
-            message += (
-                f"\n🚜 One hour of seeding time is `{vip_value}` hour(s) of VIP status."
+            message = (
+                f"{ctx.author.mention}:",
+                f"💵 Use {command_mention(self.gift)} `$USER` `$HOURS` to grant other players seeding hours.",
+                f"🚜 One hour of seeding time is `{global_config['hell_let_loose']['seeder_vip_reward_hours']}` hour(s) of VIP status.",
+                f"ℹ️ Check your seeding hours with {command_mention(self.seeder)}.",
             )
-            message += (
-                f"\nℹ️ Check your seeding hours with {get_command_mention(self.seeder)}."
+            raise EphemeralError("\n".join(message))
+
+        receiver = await self.get_player_by_discord_id(receiver_discord_user.id, True)
+        gifter = await self.get_player_by_discord_id(ctx.author.id)
+
+        gifter_seeding_time_hours = gifter.seeding_time_balance // timedelta(hours=1)
+        if hours > gifter_seeding_time_hours:
+            raise EphemeralError(
+                f"{ctx.author.mention}: ❌ Sorry, not enough banked time to claim `{hours}` hour(s) of VIP (Currently have `{gifter_seeding_time_hours:,}` banked hours)."
             )
-            await ctx.respond(message, ephemeral=True)
-            return
-        else:
-            receiver = await HLL_Player.by_discord_id(receiver_discord_user.id)
-            if receiver is None:
-                await ctx.respond(
-                    f"No information in database for user {receiver_discord_user} ({receiver_discord_user.id}) via `player_id`. Inform them to use {get_command_mention(self.register)} to tie their ID to their discord.",
-                    ephemeral=True,
-                )
-                return
-            gifter = await HLL_Player.by_discord_id(ctx.author.id)
-            if gifter is None:
-                message = f"{ctx.author.mention}: Can't find your ID to claim VIP."
-                message += f"\nMake sure you have run {get_command_mention(self.register)} and registered your Player ID and Discord."
-                await ctx.respond(message, ephemeral=True)
-                return
 
-            gifter_seeding_time_hours = gifter.seeding_time_balance // timedelta(
-                hours=1
-            )
-            if hours > gifter_seeding_time_hours:
-                await ctx.respond(
-                    f"{ctx.author.mention}: ❌ Sorry, not enough banked time to claim `{hours}` hour(s) of VIP (Currently have `{gifter_seeding_time_hours:,}` banked hours).",
-                    ephemeral=True,
-                )
-                return
-            else:
-                self.logger.info(
-                    f'User "{receiver}" is being gifted {hours} seeder hours by discord user {ctx.author.mention}.'
-                )
+        self.logger.info(
+            f'User "{receiver}" is being gifted {hours} seeder hours by discord user {ctx.author.mention}.'
+        )
 
-                receiver.seeding_time_balance += timedelta(hours=hours)
-                gifter.seeding_time_balance -= timedelta(hours=hours)
+        receiver.seeding_time_balance += timedelta(hours=hours)
+        gifter.seeding_time_balance -= timedelta(hours=hours)
 
-                message = ""
-                message += f"{ctx.author.mention}: You've added `{hours}` hour(s) to {receiver_discord_user.mention}'s seeding bank."
-                message += f"\nYour remaining seeder balance is `{gifter.seeding_time_balance // timedelta(hours=1):,}` hour(s)."
-                message += "\n💗 Thanks for seeding! 💗"
-                await gifter.save()
-                await receiver.save()
+        message = (
+            f"{ctx.author.mention}: You've added `{hours}` hour(s) to {receiver_discord_user.mention}'s seeding bank.",
+            f"Your remaining seeder balance is `{gifter.seeding_time_balance // timedelta(hours=1):,}` hour(s).",
+            "💗 Thanks for seeding! 💗",
+        )
+        await gifter.save()
+        await receiver.save()
 
-                if ctx.channel is not None:
-                    await ctx.channel.send(
-                        f"{ctx.author.mention} just gifted `{hours}` hours of VIP seeding time to {receiver_discord_user.mention}!  Use {get_command_mention(self.seeder)} to check your balance."
-                    )
+        await ctx.channel.send(
+            f"{ctx.author.mention} just gifted `{hours}` hours of VIP seeding time to {receiver_discord_user.mention}!  Use {command_mention(self.seeder)} to check your balance."
+        )
 
-                await ctx.respond(message, ephemeral=True)
-                return
+        await ctx.respond("\n".join(message), ephemeral=True)
 
     @hll_admin.command()
     @guild_only()
@@ -394,13 +321,7 @@ class BotCommands(commands.Cog):
     ):
         """Admin-only command to grant user banked seeding time.  The user still must redeem the time."""
         await ctx.defer(ephemeral=True)
-        player = await HLL_Player.by_discord_id(user.id)
-        if player is None:
-            await ctx.respond(
-                f"User {user} ({user.id}) ID doesn't match any known `player_id`. Inform them to use {get_command_mention(self.register)} to tie their ID to their discord.",
-                ephemeral=True,
-            )
-            return
+        player = await self.get_player_by_discord_id(user.id, True)
         self.logger.info(
             f'User "{player.discord_id}/{player.player_id}" is being granted {hours} seeder hours by discord user {ctx.author.mention}.'
         )
@@ -409,11 +330,12 @@ class BotCommands(commands.Cog):
         player.seeding_time_balance += timedelta(hours=hours)
         await player.save()
 
-        message = f"Successfully granted {hours} hours to seeder."
-        message = f"Previous seeding balance was `{old_seed_balance}`."
-        message += f"User {user}'s seeder balance is now `{player.seeding_time_balance // timedelta(hours=1):,}` hour(s)."
-        await ctx.respond(message, ephemeral=True)
-        return
+        message = (
+            f"Successfully granted `{hours}` hour(s) to seeder {user.mention}",
+            f"Previous seeding balance was `{old_seed_balance}`.",
+            f"User {user.mention}'s seeder balance is now `{player.seeding_time_balance // timedelta(hours=1):,}` hour(s).",
+        )
+        await ctx.respond("\n".join(message), ephemeral=True)
 
     @hll_admin.command()
     @guild_only()
@@ -428,81 +350,66 @@ class BotCommands(commands.Cog):
     ):
         "Admin-only command to check a user's VIP and seeding time."
         await ctx.defer(ephemeral=True)
-        player = await HLL_Player.by_discord_id(user.id)
-        if player is None:
-            await ctx.respond(
-                f"No information in database for user {user} ({user.id}) via `player_id`. Inform them to use {get_command_mention(self.register)} to tie their ID to their discord.",
-                ephemeral=True,
-            )
-            return
+
+        vip, player = await self.get_vip_by_discord_id(user.id, True)
+
         self.logger.debug(
             f'User {ctx.author.mention} is inspecting player data for "{player.discord_id}/{player.player_id}"'
         )
 
-        # TODO: Merge this into a method with "grant"
-        try:
-            vip_dict = await self.client.get_vip(player.player_id)
-        except Exception:
-            await ctx.respond(
-                f"{ctx.author.mention}: There was an error fetching the current VIP status for user {user}/{user.id} from one of the servers, try again later",
-                ephemeral=True,
-            )
-            return
-        vip_set = set(vip_dict.values())
-        if len(vip_set) != 1:
-            # VIP from all RCON's didn't match, notify.
-            await ctx.respond(
-                f"{ctx.author.mention}: VIP status is different between servers for user {user}/{user.id}, please contact an admin.",
-                ephemeral=True,
-            )
-            return
-
-        vip = vip_set.pop()
-
-        message = f'Data for user "<@{user}>/{user.id}"'
+        message = (f'Data for user "{user.mention}/{user.id}"',)
         if vip is None:
-            message += "\nVIP expiration: user has no active VIP via the RCON server."
+            message += ("VIP expiration: user has no active VIP via the RCON server.",)
         else:
             expiration = datetime.fromisoformat(vip)
-            message += f"\nVIP expiration: <t:{int(expiration.timestamp())}:R>"
-        message += f"\nDatabase player name: `{player.player_name}`"
+            message += (f"VIP expiration: <t:{int(expiration.timestamp())}:R>",)
         message += (
-            f"\nLast time seeded: <t:{int(player.last_seed_check.timestamp())}:R>"
+            f"Database player name: `{player.player_name}`",
+            f"Last time seeded: <t:{int(player.last_seed_check.timestamp())}:R>",
+            f"Current seeding balance (hours): `{player.seeding_time_balance // timedelta(hours=1):,}`",
+            f"Total seeding time: `{player.total_seeding_time}`",
         )
-        message += f"\nCurrent seeding balance (hours): `{player.seeding_time_balance // timedelta(hours=1):,}`"
-        message += f"\nTotal seeding time: `{player.total_seeding_time}`"
-        await ctx.respond(message, ephemeral=True)
-        return
+        await ctx.respond("\n".join(message), ephemeral=True)
 
-    @commands.Cog.listener()
-    async def on_application_command_error(
+    async def maintainer_error_message(self, ctx, error):
+        message = (global_config["seedbot"]["error_message"],)
+        if global_config["seedbot"]["maintainer_discord_ids"]:
+            message += ("Please contact the following maintainers/administrators:",)
+            try:
+                for maintainer in global_config["seedbot"]["maintainer_discord_ids"]:
+                    message += (f"<@{maintainer}>",)
+            except Exception as exc:
+                self.logger.error(
+                    "Failed to get maintainers from configuration", exc_info=exc
+                )
+        message += (
+            "The following might help determine what the problem is:",
+            f"`{error}`",
+        )
+        await ctx.respond("\n".join(message), ephemeral=True)
+
+    async def cog_command_error(
         self, ctx: discord.ApplicationContext, error: discord.DiscordException
     ):
         """Handle exceptions and discord errors, including permissions"""
+        if isinstance(error, ApplicationCommandInvokeError):
+            error = error.original
 
         if isinstance(error, commands.NotOwner):
             await ctx.respond(
                 "Insufficient privileges to use that command.", ephemeral=True
             )
-        else:
-            message = global_config["seedbot"]["error_message"]
-            if global_config["seedbot"]["maintainer_discord_ids"]:
-                try:
-                    message += (
-                        "\nPlease contact the following maintainers/administrators:"
-                    )
-                    for maintainer in global_config["seedbot"][
-                        "maintainer_discord_ids"
-                    ]:
-                        message += f"\n<@{maintainer}>"
-                except Exception as e:
-                    self.logger.error(
-                        f"Failed to get maintainers from configuration: {e}"
-                    )
-            message += "\nThe following might help determine what the problem is:"
-            message += f"\n`{error}`"
+        elif isinstance(error, EphemeralAdminError):
+            self.logger.error("An error occured", exc_info=error)
+            await self.maintainer_error_message(ctx, error)
+        elif isinstance(error, EphemeralError):
+            message = error
+            if isinstance(error, EphemeralMentionError):
+                message = f"{ctx.author.mention}: {message}"
             await ctx.respond(message, ephemeral=True)
-            raise error
+        else:
+            self.logger.error("An unexpected error occured", exc_info=error)
+            await self.maintainer_error_message(ctx, error)
 
     def cog_unload(self):
         pass
