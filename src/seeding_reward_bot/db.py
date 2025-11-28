@@ -57,17 +57,3 @@ class HLL_Player(Model):
             return self.player_name
         else:
             return self.player_id
-
-    async def by_discord_id(discord_id):
-        """
-        Performs a lookup for a user based on their player_id <=> discord_id.
-        If no result, None is returned indicating the user has no entry or hasn't registered.
-        """
-        query_set = await HLL_Player.filter(discord_id__contains=discord_id)
-        if len(query_set) == 0:
-            return None
-        elif len(query_set) != 1:
-            # self.logger.fatal("Multiple discord_id's found for {discord_id}!")
-            raise
-        else:
-            return query_set[0]
