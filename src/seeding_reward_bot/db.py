@@ -1,5 +1,3 @@
-import logging
-
 from tortoise import Tortoise, fields
 from tortoise.models import Model
 
@@ -69,7 +67,7 @@ class HLL_Player(Model):
         if len(query_set) == 0:
             return None
         elif len(query_set) != 1:
-            self.logger.fatal("Multiple discord_id's found for {discord_id}!")
+            # self.logger.fatal("Multiple discord_id's found for {discord_id}!")
             raise
         else:
             return query_set[0]

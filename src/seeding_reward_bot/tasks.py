@@ -2,16 +2,13 @@ import asyncio
 import logging
 from datetime import datetime, time, timedelta, timezone
 
-import discord
-from discord.commands import Option, SlashCommandGroup
 from discord.ext import commands, tasks
 
 from seeding_reward_bot.config import global_config
 from seeding_reward_bot.db import HLL_Player
 
-SEEDING_INCREMENT_TIMER = (
-    3  # Minutes - how often the RCON is queried for seeding checks
-)
+# Minutes - how often the RCON is queried for seeding checks
+SEEDING_INCREMENT_TIMER = 3
 
 
 class BotTasks(commands.Cog):
@@ -70,7 +67,7 @@ class BotTasks(commands.Cog):
             # If we excepted here, then the string is incorrect in fromisoformat (or something worse!)
             self.logger.error(f"Can't set seeding hours: {e}")
             pass
-        except TypeError as e:
+        except TypeError:
             # If we excepted here, then seeding times are undefined, carry on
             pass
 
