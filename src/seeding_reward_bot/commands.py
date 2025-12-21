@@ -273,6 +273,9 @@ class BotCommands(commands.Cog):
             )
             raise EphemeralError("\n".join(message))
 
+        if receiver_discord_user == ctx.author:
+            raise EphemeralMentionError("You can't gift to yourself.")
+
         receiver = await self.get_player_by_discord_id(receiver_discord_user.id, True)
         gifter = await self.get_player_by_discord_id(ctx.author.id)
 
