@@ -3,6 +3,7 @@ import logging
 from datetime import datetime, time, timedelta, timezone
 
 from discord.ext import commands, tasks
+from tortoise.exceptions import DoesNotExist, MultipleObjectsReturned
 
 from seeding_reward_bot.config import global_config
 from seeding_reward_bot.db import HLL_Player
@@ -97,27 +98,30 @@ class BotTasks(commands.Cog):
                 self.logger.debug(
                     f'Processing seeding record for player "{player_name}/{player_id}"'
                 )
-                seeder_query = await HLL_Player.filter(
-                    player_id__contains=player["player_id"]
-                )
-                if not seeder_query:
+                try:
+                    seeder = await HLL_Player.get(player_id=player_id)
+                except DoesNotExist:
                     # New seeder, make a record
                     self.logger.debug(
                         f'Generating new seeder record for "{player_name}/{player_id}"'
                     )
-                    s = HLL_Player(
+                    seeder = HLL_Player(
                         player_id=player_id,
                         player_name=player_name,
                         seeding_time_balance=self.reward_time,
                         total_seeding_time=self.reward_time,
                         last_seed_check=datetime.now(timezone.utc),
                     )
-                    await s.save()
-                elif len(seeder_query) != 1:
+                    try:
+                        await seeder.save()
+                    except Exception as e:
+                        self.logger.error(
+                            f'Failed creating record "{seeder.player_name}" during seeding: {e}'
+                        )
+                except MultipleObjectsReturned:
                     self.logger.error(f'Multiple Player ID\'s found for "{player_id}"!')
                 else:
                     # Account for seeding time for player
-                    seeder = seeder_query[0]
                     old_seed_balance = seeder.seeding_time_balance
                     seeder.player_name = player_name
                     seeder.seeding_time_balance += self.reward_time
