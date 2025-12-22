@@ -23,7 +23,7 @@ class EphemeralAdminError(EphemeralError):
     pass
 
 
-def command_mention(cmd):
+def command_mention(cmd: discord.ApplicationCommand):
     return f"</{cmd.qualified_name}:{cmd.qualified_id}>"
 
 
@@ -91,6 +91,20 @@ class BotCommands(commands.Cog):
 
         # All is well, return to the (identical) first in the list
         return vip_set.pop(), player
+
+    def hours_help_msg(
+        self,
+        ctx: discord.ApplicationContext,
+        cmd: discord.ApplicationCommand,
+        cmd_help: str,
+    ) -> str:
+        message = (
+            f"{ctx.author.mention}:",
+            f"💵 Use {command_mention(cmd)} {cmd_help}",
+            f"🚜 One hour of seeding time is `{global_config['hell_let_loose']['seeder_vip_reward_hours']}` hour(s) of VIP status.",
+            f"ℹ️ Check your seeding hours with {command_mention(self.seeder)}.",
+        )
+        return "\n".join(message)
 
     @hll.command()
     @option(
@@ -182,13 +196,10 @@ class BotCommands(commands.Cog):
         await ctx.defer(ephemeral=True)
 
         if hours is None:
-            message = (
-                f"{ctx.author.mention}:",
-                f"💵 Use {command_mention(self.claim)} `$HOURS` to turn seeding hours into VIP status.",
-                f"🚜 One hour of seeding time is `{global_config['hell_let_loose']['seeder_vip_reward_hours']}` hour(s) of VIP status.",
-                f"ℹ️ Check your seeding hours with {command_mention(self.seeder)}.",
+            message = self.hours_help_msg(
+                ctx, self.claim, "`$HOURS` to turn seeding hours into VIP status."
             )
-            raise EphemeralError("\n".join(message))
+            raise EphemeralError(message)
 
         vip, player = await self.get_vip_by_discord_id(ctx.author.id)
 
@@ -197,8 +208,8 @@ class BotCommands(commands.Cog):
             f'User "{ctx.author.name}/{player.player_id}" is attempting to claim {hours} seeder hours from their total of {player_seeding_time_hours:,}'
         )
         if hours > player_seeding_time_hours:
-            raise EphemeralError(
-                f"{ctx.author.mention}: ❌ Sorry, not enough banked time to claim `{hours}` hour(s) of VIP (Currently have `{player_seeding_time_hours:,}` banked hours)."
+            raise EphemeralMentionError(
+                f"❌ Sorry, not enough banked time to claim `{hours}` hour(s) of VIP (Currently have `{player_seeding_time_hours:,}` banked hours)."
             )
 
         grant_value = global_config["hell_let_loose"]["seeder_vip_reward_hours"] * hours
@@ -222,11 +233,10 @@ class BotCommands(commands.Cog):
             result_dict = await self.client.grant_vip(
                 player.player_name, player.player_id, expiration
             )
-            for rcon, result in result_dict.items():
-                if result is False:
-                    raise EphemeralError(
-                        f"{ctx.author.mention}: There was a problem on one of the servers assigning your VIP."
-                    )
+            if not all(result_dict.values()):
+                raise EphemeralMentionError(
+                    "There was a problem on one of the servers assigning your VIP."
+                )
 
             # !!! should only decrease banked seeding time if it is actually used...
             player.seeding_time_balance -= timedelta(hours=hours)
@@ -261,14 +271,12 @@ class BotCommands(commands.Cog):
     ) -> None:
         """Gift VIP to another player"""
         await ctx.defer(ephemeral=True)
+
         if hours is None:
-            message = (
-                f"{ctx.author.mention}:",
-                f"💵 Use {command_mention(self.gift)} `$USER` `$HOURS` to grant other players seeding hours.",
-                f"🚜 One hour of seeding time is `{global_config['hell_let_loose']['seeder_vip_reward_hours']}` hour(s) of VIP status.",
-                f"ℹ️ Check your seeding hours with {command_mention(self.seeder)}.",
+            message = self.hours_help_msg(
+                ctx, self.gift, "`$USER` `$HOURS` to grant other players seeding hours."
             )
-            raise EphemeralError("\n".join(message))
+            raise EphemeralError(message)
 
         if receiver_discord_user == ctx.author:
             raise EphemeralMentionError("You can't gift to yourself.")
@@ -278,8 +286,8 @@ class BotCommands(commands.Cog):
 
         gifter_seeding_time_hours = gifter.seeding_time_balance // timedelta(hours=1)
         if hours > gifter_seeding_time_hours:
-            raise EphemeralError(
-                f"{ctx.author.mention}: ❌ Sorry, not enough banked time to claim `{hours}` hour(s) of VIP (Currently have `{gifter_seeding_time_hours:,}` banked hours)."
+            raise EphemeralMentionError(
+                f"❌ Sorry, not enough banked time to claim `{hours}` hour(s) of VIP (Currently have `{gifter_seeding_time_hours:,}` banked hours)."
             )
 
         self.logger.info(
