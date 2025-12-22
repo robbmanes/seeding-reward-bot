@@ -28,6 +28,7 @@ class HLL_RCON_Client:
     async def close(self):
         await self.client.aclose()
 
+    @staticmethod
     def for_single_rcon(fn):
         """
         Decorator to apply method to only ever work on a singe RCON server,
@@ -43,6 +44,7 @@ class HLL_RCON_Client:
 
         return wrapper
 
+    @staticmethod
     def for_each_rcon(fn):
         """
         Decorator to apply method to all RCON servers in a list.

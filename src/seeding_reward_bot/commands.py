@@ -3,7 +3,7 @@ from datetime import datetime, timedelta, timezone
 
 import discord
 from discord import ApplicationCommandInvokeError, guild_only
-from discord.commands import Option, SlashCommandGroup
+from discord.commands import SlashCommandGroup, option
 from discord.ext import commands
 from tortoise.exceptions import DoesNotExist, MultipleObjectsReturned
 
@@ -40,7 +40,7 @@ class BotCommands(commands.Cog):
         self.client = bot.client
         self.logger = logging.getLogger(__name__)
 
-    async def get_player_by_player_id(self, player_id):
+    async def get_player_by_player_id(self, player_id: str) -> HLL_Player:
         try:
             return await HLL_Player.get(player_id=player_id)
         except MultipleObjectsReturned:
@@ -50,7 +50,9 @@ class BotCommands(commands.Cog):
                 f"There is no record for that Player ID `{player_id}`; please make sure you have seeded on our servers previously and enter your Player ID (found in the top right of OPTIONS in game) to register.  Please open a ticket for additional help."
             )
 
-    async def get_player_by_discord_id(self, discord_id, other=False):
+    async def get_player_by_discord_id(
+        self, discord_id: int, other: bool = False
+    ) -> HLL_Player:
         try:
             return await HLL_Player.get(discord_id=discord_id)
         except MultipleObjectsReturned:
@@ -63,7 +65,9 @@ class BotCommands(commands.Cog):
                 message += f"Inform them to use {command_mention(self.register)} to tie their Player ID to their discord."
             raise EphemeralError(message)
 
-    async def get_vip_by_discord_id(self, discord_id, other=False):
+    async def get_vip_by_discord_id(
+        self, discord_id: int, other: bool = False
+    ) -> tuple[str, HLL_Player]:
         player = await self.get_player_by_discord_id(discord_id, other)
 
         # We need to ensure we get the same VIP states for both RCON's.
@@ -89,15 +93,11 @@ class BotCommands(commands.Cog):
         return vip_set.pop(), player
 
     @hll.command()
-    async def register(
-        self,
-        ctx: discord.ApplicationContext,
-        player_id: Option(
-            str,
-            "Your Player ID (for Steam your SteamID64) found in the top right of OPTIONS in game",
-            required=True,
-        ),
-    ):
+    @option(
+        "player_id",
+        description="Your Player ID (for Steam your SteamID64) found in the top right of OPTIONS in game",
+    )
+    async def register(self, ctx: discord.ApplicationContext, player_id: str) -> None:
         """Register your discord account to your Player ID"""
 
         await ctx.defer(ephemeral=True)
@@ -125,7 +125,7 @@ class BotCommands(commands.Cog):
         )
 
     @hll.command()
-    async def seeder(self, ctx: discord.ApplicationContext):
+    async def seeder(self, ctx: discord.ApplicationContext) -> None:
         """Check your seeding statistics"""
 
         await ctx.defer(ephemeral=True)
@@ -142,7 +142,7 @@ class BotCommands(commands.Cog):
         await ctx.respond("\n".join(message), ephemeral=True)
 
     @hll.command()
-    async def vip(self, ctx: discord.ApplicationContext):
+    async def vip(self, ctx: discord.ApplicationContext) -> None:
         """Check your VIP status"""
 
         await ctx.defer(ephemeral=True)
@@ -170,16 +170,14 @@ class BotCommands(commands.Cog):
         await ctx.respond(message, ephemeral=True)
 
     @hll.command()
-    async def claim(
-        self,
-        ctx: discord.ApplicationContext,
-        hours: Option(
-            int,
-            "Redeem seeding hours for VIP status",
-            required=False,
-            min_value=1,
-        ),
-    ):
+    @option(
+        "hours",
+        input_type=int,
+        description=f"Seeding hours to claim, at a conversion of one seeding hour = {global_config['hell_let_loose']['seeder_vip_reward_hours']} hour(s) of VIP",
+        required=False,
+        min_value=1,
+    )
+    async def claim(self, ctx: discord.ApplicationContext, hours: int | None) -> None:
         """Redeem seeding hours for VIP status"""
         await ctx.defer(ephemeral=True)
 
@@ -247,21 +245,20 @@ class BotCommands(commands.Cog):
 
     @hll.command()
     @guild_only()
+    @option("receiver_discord_user", description="Discord user to grant VIP hours to")
+    @option(
+        "hours",
+        input_type=int,
+        description="Amount of seeding hours to gift",
+        required=False,
+        min_value=1,
+    )
     async def gift(
         self,
         ctx: discord.ApplicationContext,
-        receiver_discord_user: Option(
-            discord.Member,
-            "Discord user to grant VIP hours to",
-            required=True,
-        ),
-        hours: Option(
-            int,
-            "amount of hours to gift",
-            required=False,
-            min_value=1,
-        ),
-    ):
+        receiver_discord_user: discord.Member,
+        hours: int | None,
+    ) -> None:
         """Gift VIP to another player"""
         await ctx.defer(ephemeral=True)
         if hours is None:
@@ -308,20 +305,11 @@ class BotCommands(commands.Cog):
 
     @hll_admin.command()
     @guild_only()
+    @option("user", description="Discord user to grant seeder time to")
+    @option("hours", description="Hours of banked seeding time to grant the user")
     async def grant_seeder_time(
-        self,
-        ctx: discord.ApplicationContext,
-        user: Option(
-            discord.Member,
-            "Discord user to grant seeder time to",
-            required=True,
-        ),
-        hours: Option(
-            int,
-            "Hours of banked seeding time to grant the user",
-            required=True,
-        ),
-    ):
+        self, ctx: discord.ApplicationContext, user: discord.Member, hours: int
+    ) -> None:
         """Admin-only command to grant user banked seeding time.  The user still must redeem the time."""
         await ctx.defer(ephemeral=True)
         player = await self.get_player_by_discord_id(user.id, True)
@@ -342,16 +330,11 @@ class BotCommands(commands.Cog):
 
     @hll_admin.command()
     @guild_only()
+    @option("user", description="Discord user to get information about")
     async def check_user(
-        self,
-        ctx: discord.ApplicationContext,
-        user: Option(
-            discord.Member,
-            "Discord user to get information about",
-            required=True,
-        ),
-    ):
-        "Admin-only command to check a user's VIP and seeding time."
+        self, ctx: discord.ApplicationContext, user: discord.Member
+    ) -> None:
+        """Admin-only command to check a user's VIP and seeding time."""
         await ctx.defer(ephemeral=True)
 
         vip, player = await self.get_vip_by_discord_id(user.id, True)
@@ -374,7 +357,9 @@ class BotCommands(commands.Cog):
         )
         await ctx.respond("\n".join(message), ephemeral=True)
 
-    async def maintainer_error_message(self, ctx, error):
+    async def maintainer_error_message(
+        self, ctx: discord.ApplicationContext, error: Exception
+    ) -> None:
         message = (global_config["seedbot"]["error_message"],)
         if global_config["seedbot"]["maintainer_discord_ids"]:
             message += ("Please contact the following maintainers/administrators:",)
@@ -392,8 +377,8 @@ class BotCommands(commands.Cog):
         await ctx.respond("\n".join(message), ephemeral=True)
 
     async def cog_command_error(
-        self, ctx: discord.ApplicationContext, error: discord.DiscordException
-    ):
+        self, ctx: discord.ApplicationContext, error: Exception
+    ) -> None:
         """Handle exceptions and discord errors, including permissions"""
         if isinstance(error, ApplicationCommandInvokeError):
             error = error.original
