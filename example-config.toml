@@ -5,7 +5,6 @@ maintainer_discord_ids = ["DISCORD_ID1", "DISCORD_ID2"]
 
 [discord]
 discord_token = "DISCORD_TOKEN"
-# discord_guild_id = "DISCORD_GUILD_ID"
 
 [database.postgres]
 db_user = "seedbot"
