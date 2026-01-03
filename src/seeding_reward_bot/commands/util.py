@@ -41,17 +41,20 @@ class BotCommands(commands.Cog):
     @staticmethod
     async def get_player_by_player_id(player_id: str) -> HLL_Player:
         try:
-            return await HLL_Player.get(player_id=player_id)
+            return await HLL_Player.select_for_update().get(player_id=player_id)
         except DoesNotExist:
             raise EphemeralMentionError(
                 f"There is no record for that Player ID `{player_id}`; please make sure you have seeded on our servers previously and enter your Player ID (found in the top right of OPTIONS in game) to register.  Please open a ticket for additional help."
             )
 
     async def get_player_by_discord_id(
-        self, discord_id: int, other: bool = False
+        self, discord_id: int, *, other: bool = False, update: bool = False
     ) -> HLL_Player:
         try:
-            return await HLL_Player.get(discord_id=discord_id)
+            hll_player = HLL_Player
+            if update:
+                hll_player = hll_player.select_for_update()
+            return await hll_player.get(discord_id=discord_id)
         except DoesNotExist:
             message = f"Discord ID <@{discord_id}> is not registered. "
             register_cmd = command_mention(
@@ -64,9 +67,11 @@ class BotCommands(commands.Cog):
             raise EphemeralError(message)
 
     async def get_vip_by_discord_id(
-        self, discord_id: int, other: bool = False
+        self, discord_id: int, *, other: bool = False, update: bool = False
     ) -> tuple[str, HLL_Player]:
-        player = await self.get_player_by_discord_id(discord_id, other)
+        player = await self.get_player_by_discord_id(
+            discord_id, other=other, update=update
+        )
 
         # We need to ensure we get the same VIP states for both RCON's.
         try:
