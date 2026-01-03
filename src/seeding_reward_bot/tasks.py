@@ -3,7 +3,7 @@ import logging
 from datetime import datetime, time, timedelta, timezone
 
 from discord.ext import commands, tasks
-from tortoise.exceptions import DoesNotExist, MultipleObjectsReturned
+from tortoise.exceptions import DoesNotExist
 
 from seeding_reward_bot.config import global_config
 from seeding_reward_bot.db import HLL_Player
@@ -119,8 +119,8 @@ class BotTasks(commands.Cog):
                         self.logger.error(
                             f'Failed creating record "{seeder.player_name}" during seeding: {e}'
                         )
-                except MultipleObjectsReturned:
-                    self.logger.error(f'Multiple Player ID\'s found for "{player_id}"!')
+                except Exception:
+                    self.logger.exception(f"Failed getting record for {player_id=}")
                 else:
                     # Account for seeding time for player
                     old_seed_balance = seeder.seeding_time_balance
