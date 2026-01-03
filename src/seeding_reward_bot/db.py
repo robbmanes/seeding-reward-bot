@@ -39,9 +39,11 @@ class HLL_Player(Model):
     Model representing a player <=> discord relationship.
     """
 
-    player_id = fields.TextField(description="Player ID for the player") # UNIQUE in DB
+    player_id = fields.TextField(description="Player ID for the player")  # UNIQUE in DB
     player_name = fields.TextField(description="Player's stored name", null=True)
-    discord_id = fields.BigIntField(description="Discord ID for player", null=True, unique=True)
+    discord_id = fields.BigIntField(
+        description="Discord ID for player", null=True, unique=True
+    )
     seeding_time_balance = fields.TimeDeltaField(
         description="Amount of unspent seeding hours"
     )
