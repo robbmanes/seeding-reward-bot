@@ -7,6 +7,7 @@ from tortoise.exceptions import DoesNotExist, MultipleObjectsReturned
 
 from seeding_reward_bot.config import global_config
 from seeding_reward_bot.db import HLL_Player
+from seeding_reward_bot.main import HLLDiscordBot
 
 # Minutes - how often the RCON is queried for seeding checks
 SEEDING_INCREMENT_TIMER = 3
@@ -17,7 +18,7 @@ class BotTasks(commands.Cog):
     Cog to handle bot tasks/scheduling.
     """
 
-    def __init__(self, bot):
+    def __init__(self, bot: HLLDiscordBot):
         self.bot = bot
         self.client = bot.client
         self.logger = logging.getLogger(__name__)
@@ -173,9 +174,9 @@ class BotTasks(commands.Cog):
         pass
 
 
-def setup(bot):
+def setup(bot: HLLDiscordBot):
     bot.add_cog(BotTasks(bot))
 
 
-def teardown(bot):
+def teardown(bot: HLLDiscordBot):
     pass
