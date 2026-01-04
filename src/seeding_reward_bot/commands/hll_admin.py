@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 import discord
 from discord import guild_only
 from discord.commands import SlashCommandGroup, option
+from tortoise.transactions import atomic
 
 from seeding_reward_bot.commands.util import BotCommands
 from seeding_reward_bot.main import HLLDiscordBot
@@ -19,19 +20,20 @@ class HLLAdminCommands(BotCommands):
     @guild_only()
     @option("user", description="Discord user to grant seeder time to")
     @option("hours", description="Hours of banked seeding time to grant the user")
+    @atomic()
     async def grant_seeder_time(
         self, ctx: discord.ApplicationContext, user: discord.Member, hours: int
     ) -> None:
         """Admin-only command to grant user banked seeding time.  The user still must redeem the time."""
         await ctx.defer(ephemeral=True)
-        player = await self.get_player_by_discord_id(user.id, True)
+        player = await self.get_player_by_discord_id(user.id, other=True, update=True)
         self.logger.info(
             f'User "{player.discord_id}/{player.player_id}" is being granted {hours} seeder hours by discord user {ctx.author.mention}.'
         )
 
         old_seed_balance = player.seeding_time_balance
         player.seeding_time_balance += timedelta(hours=hours)
-        await player.save()
+        await player.save(update_fields=["seeding_time_balance"])
 
         message = (
             f"Successfully granted `{hours}` hour(s) to seeder {user.mention}",
@@ -49,7 +51,7 @@ class HLLAdminCommands(BotCommands):
         """Admin-only command to check a user's VIP and seeding time."""
         await ctx.defer(ephemeral=True)
 
-        vip, player = await self.get_vip_by_discord_id(user.id, True)
+        vip, player = await self.get_vip_by_discord_id(user.id, other=True)
 
         self.logger.debug(
             f'User {ctx.author.mention} is inspecting player data for "{player.discord_id}/{player.player_id}"'

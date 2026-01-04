@@ -3,6 +3,7 @@ from datetime import datetime, timedelta, timezone
 import discord
 from discord import guild_only
 from discord.commands import SlashCommandGroup, option
+from tortoise.transactions import atomic
 
 from seeding_reward_bot.commands.util import (
     BotCommands,
@@ -40,6 +41,7 @@ class HLLCommands(BotCommands):
         "player_id",
         description="Your Player ID (for Steam your SteamID64) found in the top right of OPTIONS in game",
     )
+    @atomic()
     async def register(self, ctx: discord.ApplicationContext, player_id: str) -> None:
         """Register your discord account to your Player ID"""
         await ctx.defer(ephemeral=True)
@@ -57,7 +59,7 @@ class HLLCommands(BotCommands):
             )
 
         player.discord_id = ctx.author.id
-        await player.save()
+        await player.save(update_fields=["discord_id"])
         self.logger.debug(
             f"Updated user {ctx.author.name}/{ctx.author.id} with player_id `{player_id}`"
         )
@@ -117,6 +119,7 @@ class HLLCommands(BotCommands):
         required=False,
         min_value=1,
     )
+    @atomic()
     async def claim(self, ctx: discord.ApplicationContext, hours: int | None) -> None:
         """Redeem seeding hours for VIP status"""
         await ctx.defer(ephemeral=True)
@@ -127,7 +130,7 @@ class HLLCommands(BotCommands):
             )
             raise EphemeralError(message)
 
-        vip, player = await self.get_vip_by_discord_id(ctx.author.id)
+        vip, player = await self.get_vip_by_discord_id(ctx.author.id, update=True)
 
         player_seeding_time_hours = player.seeding_time_balance // timedelta(hours=1)
         self.logger.debug(
@@ -171,12 +174,12 @@ class HLLCommands(BotCommands):
                 f"{ctx.author.mention}: You've added `{grant_value}` hour(s) to your VIP status.",
                 f"Your VIP expires <t:{int(expiration.timestamp())}:R>",
             )
+            await player.save(update_fields=["seeding_time_balance"])
 
         message += (
             f"Your remaining seeder balance is `{player.seeding_time_balance // timedelta(hours=1):,}` hour(s).",
             "💗 Thanks for seeding! 💗",
         )
-        await player.save()
         await ctx.respond("\n".join(message), ephemeral=True)
 
     @hll.command()
@@ -189,6 +192,7 @@ class HLLCommands(BotCommands):
         required=False,
         min_value=1,
     )
+    @atomic()
     async def gift(
         self,
         ctx: discord.ApplicationContext,
@@ -207,8 +211,10 @@ class HLLCommands(BotCommands):
         if receiver_discord_user == ctx.author:
             raise EphemeralMentionError("You can't gift to yourself.")
 
-        receiver = await self.get_player_by_discord_id(receiver_discord_user.id, True)
-        gifter = await self.get_player_by_discord_id(ctx.author.id)
+        receiver = await self.get_player_by_discord_id(
+            receiver_discord_user.id, update=True, other=True
+        )
+        gifter = await self.get_player_by_discord_id(ctx.author.id, update=True)
 
         gifter_seeding_time_hours = gifter.seeding_time_balance // timedelta(hours=1)
         if hours > gifter_seeding_time_hours:
@@ -228,8 +234,8 @@ class HLLCommands(BotCommands):
             f"Your remaining seeder balance is `{gifter.seeding_time_balance // timedelta(hours=1):,}` hour(s).",
             "💗 Thanks for seeding! 💗",
         )
-        await gifter.save()
-        await receiver.save()
+        await gifter.save(update_fields=["seeding_time_balance"])
+        await receiver.save(update_fields=["seeding_time_balance"])
 
         await ctx.channel.send(
             f"{ctx.author.mention} just gifted `{hours}` hours of VIP seeding time to {receiver_discord_user.mention}!  Use {command_mention(self.seeder)} to check your balance."
