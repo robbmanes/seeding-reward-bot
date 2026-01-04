@@ -41,28 +41,12 @@ class HLLCommands(BotCommands):
         "player_id",
         description="Your Player ID (for Steam your SteamID64) found in the top right of OPTIONS in game",
     )
-    @atomic()
     async def register(self, ctx: discord.ApplicationContext, player_id: str) -> None:
         """Register your discord account to your Player ID"""
         await ctx.defer(ephemeral=True)
 
-        player = await self.get_player_by_player_id(player_id)
+        await self.register_player(ctx, player_id, ctx.author)
 
-        if player.discord_id == ctx.author.id:
-            raise EphemeralError("That `player_id` is already registered to you!")
-        elif player.discord_id:
-            self.logger.debug(
-                f"Discord user {ctx.author.name}/{ctx.author.id} attempted to register player_id `{player_id}` but it is already owned by Discord user {player.discord_id}"
-            )
-            raise EphemeralError(
-                "That `player_id` is already registered to someone else."
-            )
-
-        player.discord_id = ctx.author.id
-        await player.save(update_fields=["discord_id"])
-        self.logger.debug(
-            f"Updated user {ctx.author.name}/{ctx.author.id} with player_id `{player_id}`"
-        )
         await ctx.respond(
             f"{ctx.author.mention}: I've registered your `player_id` to your Discord account. Thanks!",
             ephemeral=True,
@@ -91,7 +75,8 @@ class HLLCommands(BotCommands):
 
         self.logger.debug(f"VIP query for `{ctx.author.id}/{ctx.author.name}`.")
 
-        vip, _ = await self.get_vip_by_discord_id(ctx.author.id)
+        player = await self.get_player_by_discord_id(ctx.author.id)
+        vip = await self.get_vip_by_player_id(player.player_id)
 
         if vip is None:
             message = f"No VIP record found for {ctx.author.mention}."
@@ -130,7 +115,8 @@ class HLLCommands(BotCommands):
             )
             raise EphemeralError(message)
 
-        vip, player = await self.get_vip_by_discord_id(ctx.author.id, update=True)
+        player = await self.get_player_by_discord_id(ctx.author.id, update=True)
+        vip = await self.get_vip_by_player_id(player.player_id)
 
         player_seeding_time_hours = player.seeding_time_balance // timedelta(hours=1)
         self.logger.debug(
