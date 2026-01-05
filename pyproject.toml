@@ -1,6 +1,6 @@
 [project]
 name = "seeding-reward-bot"
-version = "0.2.3"
+version = "0.2.4"
 description = "Discord Bot for encouraging and rewarding seeding for select games."
 authors = [
     { name = "Robb Manes", email = "robbmanes@protonmail.com" },
