@@ -9,11 +9,11 @@ TORTOISE_ORM = {
         "default": {
             "engine": "tortoise.backends.asyncpg",
             "credentials": {
-                "host": global_config["database"]["postgres"]["db_url"],
-                "port": global_config["database"]["postgres"]["db_port"],
-                "user": global_config["database"]["postgres"]["db_user"],
-                "password": global_config["database"]["postgres"]["db_password"],
-                "database": global_config["database"]["postgres"]["db_name"],
+                "host": global_config.db_host,
+                "port": global_config.db_port,
+                "user": global_config.db_user,
+                "password": global_config.db_password,
+                "database": global_config.db_name,
             },
         },
     },

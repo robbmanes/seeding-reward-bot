@@ -62,7 +62,7 @@ class HLL_RCON_Client:
             tasks = {}
             try:
                 async with asyncio.TaskGroup() as tg:
-                    for rcon_server_url in global_config["hell_let_loose"]["rcon_url"]:
+                    for rcon_server_url in global_config.rcon_url:
                         self.logger.debug(
                             f'Executing "{fn.__name__}" with RCON "{rcon_server_url}" as an endpoint...'
                         )
@@ -81,7 +81,7 @@ class HLL_RCON_Client:
     @stamina.retry(on=httpx.HTTPError)
     async def request_rcon(self, method, server, query, json=None):
         headers = {
-            "Authorization": f"bearer {global_config['hell_let_loose']['rcon_api_key']}",
+            "Authorization": f"bearer {global_config.rcon_api_key}",
             "Connection": "keep-alive",
             "Content-Type": "application/json",
         }
@@ -190,7 +190,7 @@ class HLL_RCON_Client:
         Returns True for success, False for failure
         """
 
-        if not global_config["hell_let_loose"]["allow_messages_to_players"]:
+        if not global_config.allow_messages_to_players:
             # early exit if config says don't send messages to players...
             # useful when (sneakily) testing!
             return True

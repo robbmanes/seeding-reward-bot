@@ -1,6 +1,6 @@
 import asyncio
 import logging
-from datetime import datetime, time, timedelta, timezone
+from datetime import datetime, timedelta, timezone
 
 from discord.ext import commands, tasks
 from tortoise.exceptions import DoesNotExist
@@ -38,45 +38,29 @@ class BotTasks(commands.Cog):
         for rewards to those who seed.
         """
         # Ensure that we are during active seeding hours, if set.
-        try:
-            seeding_start_time_str = global_config["hell_let_loose"][
-                "seeding_start_time_utc"
-            ]
-            seeding_end_time_str = global_config["hell_let_loose"][
-                "seeding_end_time_utc"
-            ]
+        seeding_start_time = global_config.seeding_start_time_utc
+        seeding_end_time = global_config.seeding_end_time_utc
 
-            seeding_start_time = time.fromisoformat(seeding_start_time_str)
-            seeding_end_time = time.fromisoformat(seeding_end_time_str)
+        time_now = datetime.now(timezone.utc).time()
 
-            time_now = datetime.now(timezone.utc).time()
+        # https://stackoverflow.com/questions/20518122/python-working-out-if-time-now-is-between-two-times
+        def is_now(start, end, now):
+            if start == end:
+                return True
+            if start <= end:
+                return start <= now <= end
+            else:
+                return start <= now or now < end
 
-            # https://stackoverflow.com/questions/20518122/python-working-out-if-time-now-is-between-two-times
-            def is_now(start, end, now):
-                if start == end:
-                    return True
-                if start <= end:
-                    return start <= now <= end
-                else:
-                    return start <= now or now < end
-
-            if not is_now(seeding_start_time, seeding_end_time, time_now):
-                self.logger.debug(
-                    f'Not within seeding time range of "{seeding_start_time_str} - {seeding_end_time_str}" UTC'
-                )
-                return
-
-        except ValueError as e:
-            # If we excepted here, then the string is incorrect in fromisoformat (or something worse!)
-            self.logger.error(f"Can't set seeding hours: {e}")
-            pass
-        except TypeError:
-            # If we excepted here, then seeding times are undefined, carry on
-            pass
+        if not is_now(seeding_start_time, seeding_end_time, time_now):
+            self.logger.debug(
+                f'Not within seeding time range of "{seeding_start_time} - {seeding_end_time}" UTC'
+            )
+            return
 
         # Run once per RCON:
         async with asyncio.TaskGroup() as tg:
-            for rcon_server_url in global_config["hell_let_loose"]["rcon_url"]:
+            for rcon_server_url in global_config.rcon_url:
                 tg.create_task(self.update_seeders_per_server(tg, rcon_server_url))
 
     async def update_seeders_per_server(self, tg: asyncio.TaskGroup, rcon_server_url):
@@ -85,7 +69,7 @@ class BotTasks(commands.Cog):
         self.logger.debug(f'Processing seeding player list for "{rcon_server_url}"...')
 
         # Check if player count is below seeding threshold
-        if len(player_list) < global_config["hell_let_loose"]["seeding_threshold"]:
+        if len(player_list) < global_config.seeding_threshold:
             self.logger.info(
                 f'Server "{rcon_server_url}" qualifies for seeding status at this time.'
             )
@@ -99,7 +83,7 @@ class BotTasks(commands.Cog):
             self.logger.debug(f'Seeder status updated for server "{rcon_server_url}"')
         else:
             self.logger.debug(
-                f"Server {rcon_server_url} does not qualify as seeding status at this time (player_count = {len(player_list)}, must be > {global_config['hell_let_loose']['seeding_threshold']}).  Skipping."
+                f"Server {rcon_server_url} does not qualify as seeding status at this time (player_count = {len(player_list)}, must be > {global_config.seeding_threshold}).  Skipping."
             )
 
     @atomic()
@@ -178,7 +162,7 @@ class BotTasks(commands.Cog):
         if not await self.client.send_player_message(
             rcon_server_url,
             player_id,
-            global_config["hell_let_loose"]["seeder_reward_message"],
+            global_config.seeder_reward_message,
         ):
             self.logger.error(
                 f'Failed to send seeder reward message to player "{player_id}"'
