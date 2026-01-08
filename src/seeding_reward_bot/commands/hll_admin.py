@@ -124,7 +124,7 @@ class HLLAdminCommands(BotCommands):
             f'User {ctx.author.mention} is unregistering "{player.discord_id}/{player.player_id}"'
         )
 
-        player.discord_id = None
+        player.discord_id = None  # type: ignore[invalid-assignment]
         await player.save(update_fields=["discord_id"])
 
         message = (

@@ -223,7 +223,7 @@ class HLLCommands(BotCommands):
         await gifter.save(update_fields=["seeding_time_balance"])
         await receiver.save(update_fields=["seeding_time_balance"])
 
-        await ctx.channel.send(
+        await ctx.send(
             f"{ctx.author.mention} just gifted `{hours}` hours of VIP seeding time to {receiver_discord_user.mention}!  Use {command_mention(self.seeder)} to check your balance."
         )
 
