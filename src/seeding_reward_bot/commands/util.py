@@ -137,11 +137,11 @@ class BotCommands(commands.Cog):
     async def maintainer_error_message(
         self, ctx: discord.ApplicationContext, error: Exception
     ) -> None:
-        message = (global_config["seedbot"]["error_message"],)
-        if global_config["seedbot"]["maintainer_discord_ids"]:
+        message = (global_config.error_message,)
+        if global_config.maintainer_discord_ids:
             message += ("Please contact the following maintainers/administrators:",)
             try:
-                for maintainer in global_config["seedbot"]["maintainer_discord_ids"]:
+                for maintainer in global_config.maintainer_discord_ids:
                     message += (f"<@{maintainer}>",)
             except Exception:
                 self.logger.exception("Failed to get maintainers from configuration")

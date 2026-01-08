@@ -23,23 +23,23 @@ git fetch --tags
 git checkout $(git describe --tags $(git rev-list --tags --max-count=1))
 ```
 
-### Copy example config and compose files
+### Copy example .env and compose files
 ```
-cp example-config.toml config.toml
+cp example.env .env
 cp example-compose.yml compose.yml
 ```
 
-### Edit config.toml
+### Edit .env
 Use your favorite editor or try `nano` or `vim`
 ```
-nano config.toml
+nano .env
 ```
 
-Add your `discord_token`, set who the maintainer on discord will be with their id(s) in `maintainer_discord_ids`, set the discord guild id by uncommenting the line `discord_guild_id` and fill in the id from the guild the bot will run in
+Add your `DISCORD_TOKEN`, set who the maintainer on discord will be with their id(s) in `MAINTAINER_DISCORD_IDS`
 
-Set the `rcon_url`'s to wherever your crcon is accessed at
+Set the `RCON_URL`'s to wherever your crcon is accessed at
 
-You'll need to make another user account in crcon for this, set the password to something unguessable and throw it away, perms needed (suggest the only ones the account has) are:
+You'll need to make another user account in CRCON for this, set the password to something unguessable and throw it away, perms needed (suggest the only ones the account has) are:
 ```
 api | rcon user | Can add VIP status to players
 api | rcon user | Can message players
@@ -47,9 +47,9 @@ api | rcon user | Can view get_players endpoint (name, steam ID, VIP status and 
 api | rcon user | Can view all players with VIP and their expiration timestamps
 ```
 
-Make an api key for the account and add it to the config at `rcon_api_key`
+Make an api key for the account and add it to the .env at `RCON_API_KEY`
 
-Change the other settings as wanted in the config
+Change the other settings as wanted in the .env
 
 ## Build and start the bot
 ```

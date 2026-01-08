@@ -31,7 +31,7 @@ class HLLCommands(BotCommands):
         message = (
             f"{ctx.author.mention}:",
             f"💵 Use {command_mention(cmd)} {cmd_help}",
-            f"🚜 One hour of seeding time is `{global_config['hell_let_loose']['seeder_vip_reward_hours']}` hour(s) of VIP status.",
+            f"🚜 One hour of seeding time is `{global_config.seeder_vip_reward_hours}` hour(s) of VIP status.",
             f"ℹ️ Check your seeding hours with {command_mention(self.seeder)}.",
         )
         return "\n".join(message)
@@ -64,7 +64,7 @@ class HLLCommands(BotCommands):
             f" 🌱 Total seeding time (hours): `{player.total_seeding_time}`",
             f" 🏦 Unspent seeding time balance (hours): `{player.seeding_time_balance // timedelta(hours=1):,}`",
             f" 🕰️ Last seeding time: <t:{int(player.last_seed_check.timestamp())}:R>",
-            f" ℹ️ Turn your seeding hours into VIP time with {command_mention(self.claim)}. One hour of seeding = {global_config['hell_let_loose']['seeder_vip_reward_hours']} hour(s) of VIP.",
+            f" ℹ️ Turn your seeding hours into VIP time with {command_mention(self.claim)}. One hour of seeding = {global_config.seeder_vip_reward_hours} hour(s) of VIP.",
         )
         await ctx.respond("\n".join(message), ephemeral=True)
 
@@ -100,7 +100,7 @@ class HLLCommands(BotCommands):
     @option(
         "hours",
         input_type=int,
-        description=f"Seeding hours to claim, at a conversion of one seeding hour = {global_config['hell_let_loose']['seeder_vip_reward_hours']} hour(s) of VIP",
+        description=f"Seeding hours to claim, at a conversion of one seeding hour = {global_config.seeder_vip_reward_hours} hour(s) of VIP",
         required=False,
         min_value=1,
     )
@@ -127,7 +127,7 @@ class HLLCommands(BotCommands):
                 f"❌ Sorry, not enough banked time to claim `{hours}` hour(s) of VIP (Currently have `{player_seeding_time_hours:,}` banked hours)."
             )
 
-        grant_value = global_config["hell_let_loose"]["seeder_vip_reward_hours"] * hours
+        grant_value = global_config.seeder_vip_reward_hours * hours
         if vip is None:
             # !!! vip expiration is in utc...
             expiration = datetime.now(timezone.utc) + timedelta(hours=grant_value)

@@ -1,5 +1,4 @@
 import logging
-import os
 
 import discord
 
@@ -23,18 +22,9 @@ def run_discord_bot():
     Entry point for discord bot.
     """
     # Set logging level
-    match global_config["seedbot"]["log_level"]:
-        case "INFO":
-            logging.basicConfig(level=logging.INFO)
-        case "DEBUG":
-            logging.basicConfig(level=logging.DEBUG)
+    logging.basicConfig(level=global_config.log_level)
 
     logger = logging.getLogger(__package__)
-
-    # Check environment variables to override settings file
-    env_token = os.environ.get("DISCORD_TOKEN")
-    if env_token is not None:
-        global_config["discord"]["discord_token"] = env_token
 
     # Create a hll discord bot (has an RCON client)
     bot = HLLDiscordBot()
@@ -53,9 +43,7 @@ def run_discord_bot():
     # Initialize database
     bot.loop.create_task(db.init())
     try:
-        bot.loop.run_until_complete(
-            bot.start(global_config["discord"]["discord_token"])
-        )
+        bot.loop.run_until_complete(bot.start(global_config.discord_token))
     except KeyboardInterrupt:
         bot.loop.run_until_complete(bot.close())
     finally:
