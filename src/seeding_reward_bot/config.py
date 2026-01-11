@@ -19,9 +19,10 @@ class Configuration:
         self.db_host = env("DB_HOST")
         self.db_port = env.int("DB_PORT")
         self.db_name = env("DB_NAME")
-        self.rcon_url = env.list(
+        self.rcon_url = env.dict(
             "RCON_URL",
-            subcast=str,
+            subcast_keys=str,
+            subcast_values=int,
             validate=lambda items: all(rcon_url_validater(item) for item in items),
         )
         self.rcon_api_key = env("RCON_API_KEY")

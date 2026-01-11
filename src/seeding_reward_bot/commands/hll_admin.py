@@ -5,7 +5,10 @@ from discord import guild_only
 from discord.commands import SlashCommandGroup, option
 from tortoise.transactions import atomic
 
-from seeding_reward_bot.commands.util import BotCommands
+from seeding_reward_bot.commands.util import (
+    BotCommands,
+    get_embed_table,
+)
 from seeding_reward_bot.db import HLL_Player
 from seeding_reward_bot.main import HLLDiscordBot
 
@@ -16,6 +19,9 @@ class HLLAdminCommands(BotCommands):
     """
 
     hll_admin = SlashCommandGroup("hll-admin", "Admin seeding commands")
+    hll_admin_leaderboard = hll_admin.create_subgroup(
+        "leaderboard", "Admin leaderboard commands"
+    )
 
     @hll_admin.command()
     @guild_only()
@@ -133,6 +139,64 @@ class HLLAdminCommands(BotCommands):
             f"Player ID was: `{player.player_id}`",
         )
         await ctx.respond("\n".join(message), ephemeral=True)
+
+    _hide_unhide_pid_option = option(
+        "player_id",
+        description="Player ID found in the top right of OPTIONS in game",
+    )
+
+    @hll_admin_leaderboard.command()
+    @guild_only()
+    @_hide_unhide_pid_option
+    async def hide_player(
+        self, ctx: discord.ApplicationContext, player_id: str
+    ) -> None:
+        """Admin-only command to hide a Player ID from being shown in seeding leaderboards"""
+        await self._hide_player(ctx, player_id)
+
+    @hll_admin_leaderboard.command()
+    @guild_only()
+    @_hide_unhide_pid_option
+    async def unhide_player(
+        self, ctx: discord.ApplicationContext, player_id: str
+    ) -> None:
+        """Admin-only command to unhide a Player ID from being shown in seeding leaderboards"""
+        await self._hide_player(ctx, player_id, False)
+
+    @atomic()
+    async def _hide_player(self, ctx, player_id, hide=True) -> None:
+        await ctx.defer(ephemeral=True)
+
+        player = await self.get_player_by_player_id(player_id, other=True, update=True)
+        message = f"{player} ({player_id}) was "
+        if player.hidden != hide:
+            player.hidden = hide
+            await player.save(update_fields=["hidden"])
+        else:
+            message += "already "
+
+        message += "hidden" if hide else "unhidden"
+        await ctx.respond(message, ephemeral=True)
+
+    @hll_admin_leaderboard.command()
+    @guild_only()
+    async def show_hidden_players(self, ctx: discord.ApplicationContext) -> None:
+        """Admin-only command to display the players hidden from the seeding leaderboards"""
+        await ctx.defer(ephemeral=True)
+
+        columns = {
+            "Player Name": "player_name",
+            "Player ID": "player_id",
+        }
+        players = await HLL_Player.filter(hidden=True).values_list(*columns.values())
+        embed = get_embed_table(
+            "Players Hidden from Seeding Leaderboard",
+            columns.keys(),
+            players,
+            "{} ({})",
+        )
+
+        await ctx.respond(embed=embed, ephemeral=True)
 
 
 def setup(bot: HLLDiscordBot):

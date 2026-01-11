@@ -3,15 +3,24 @@ from datetime import datetime, timedelta, timezone
 import discord
 from discord import guild_only
 from discord.commands import SlashCommandGroup, option
+from tortoise.expressions import F
+from tortoise.functions import Count
 from tortoise.transactions import atomic
 
 from seeding_reward_bot.commands.util import (
     BotCommands,
+    DateTrunc,
     EphemeralError,
     EphemeralMentionError,
+    Greatest,
+    RankOrderByDesc,
+    SumTypeChange,
     command_mention,
+    get_embed_table,
+    leaderboard_period_choices,
 )
 from seeding_reward_bot.config import global_config
+from seeding_reward_bot.db import Seeding_Session
 from seeding_reward_bot.main import HLLDiscordBot
 
 
@@ -21,6 +30,9 @@ class HLLCommands(BotCommands):
     """
 
     hll = SlashCommandGroup("hll", "Seeding commands")
+    hll_leaderboard = hll.create_subgroup(
+        "leaderboard", "Seeding leaderboard and stats"
+    )
 
     def hours_help_msg(
         self,
@@ -228,6 +240,52 @@ class HLLCommands(BotCommands):
         )
 
         await ctx.respond("\n".join(message), ephemeral=True)
+
+    @hll_leaderboard.command()
+    @option(
+        "period",
+        description="Which leaderboard to show",
+        choices=[
+            discord.OptionChoice(name.lower(), days)
+            for days, name in leaderboard_period_choices.items()
+        ],
+        default=next(iter(leaderboard_period_choices)),
+    )
+    async def show(self, ctx: discord.ApplicationContext, period: int) -> None:
+        """Show the current leaderboard for seeding time"""
+        await ctx.defer()
+
+        columns = {
+            "Rank": "rank",
+            "Player Name": "hll_player__player_name",
+            "Sessions": "sessions",
+            "duration": "duration",
+        }
+        period_start = datetime.now(timezone.utc) - timedelta(days=period)
+        duration = SumTypeChange(F("end_time") - Greatest("start_time", period_start))
+        rows = (
+            await Seeding_Session.filter(
+                end_time__gte=period_start,
+                hll_player__hidden=False,
+            )
+            .annotate(
+                duration=DateTrunc(duration, "second"),
+                sessions=Count("hll_player_id"),
+                rank=RankOrderByDesc(duration),
+            )
+            .group_by("hll_player_id", "hll_player__player_name")
+            .order_by("rank")
+            .limit(20)
+            .values_list(*columns.values())
+        )
+        embed = get_embed_table(
+            f"{leaderboard_period_choices[period]} Seeding Leaderboard",
+            columns.keys(),
+            rows,
+            "{}. [{}][{}]: {}",
+        )
+
+        await ctx.respond(embed=embed)
 
 
 def setup(bot: HLLDiscordBot):

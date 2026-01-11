@@ -37,7 +37,7 @@ nano .env
 
 Add your `DISCORD_TOKEN`, set who the maintainer on discord will be with their id(s) in `MAINTAINER_DISCORD_IDS`
 
-Set the `RCON_URL`'s to wherever your crcon is accessed at
+Set the `RCON_URL`'s to wherever your CRCON is accessed at, the number after the URL should match the `SERVER_NUMBER` in the CRCON config for each server
 
 You'll need to make another user account in CRCON for this, set the password to something unguessable and throw it away, perms needed (suggest the only ones the account has) are:
 ```

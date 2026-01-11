@@ -7,7 +7,7 @@ from tortoise.exceptions import DoesNotExist
 from tortoise.transactions import atomic
 
 from seeding_reward_bot.config import global_config
-from seeding_reward_bot.db import HLL_Player
+from seeding_reward_bot.db import HLL_Player, Seeding_Session
 from seeding_reward_bot.main import HLLDiscordBot
 
 # Minutes - how often the RCON is queried for seeding checks
@@ -25,6 +25,10 @@ class BotTasks(commands.Cog):
         self.logger = logging.getLogger(__name__)
 
         self.reward_time = timedelta(minutes=SEEDING_INCREMENT_TIMER)
+
+        self.seeders = {
+            rcon_server_url: {} for rcon_server_url in global_config.rcon_url
+        }
 
         # Start tasks during init
         self.update_seeders.start()
@@ -63,7 +67,9 @@ class BotTasks(commands.Cog):
             for rcon_server_url in global_config.rcon_url:
                 tg.create_task(self.update_seeders_per_server(tg, rcon_server_url))
 
-    async def update_seeders_per_server(self, tg: asyncio.TaskGroup, rcon_server_url):
+    async def update_seeders_per_server(
+        self, tg: asyncio.TaskGroup, rcon_server_url: str
+    ):
         player_list = await self.client.get_player_list(rcon_server_url)
 
         self.logger.debug(f'Processing seeding player list for "{rcon_server_url}"...')
@@ -80,15 +86,22 @@ class BotTasks(commands.Cog):
             # Iterate through current players and accumulate their seeding time
             for player in player_list:
                 await self.update_seeders_per_player(tg, rcon_server_url, player)
+            self.seeders[rcon_server_url] = {
+                player["player_id"]: self.seeders[rcon_server_url].get(
+                    player["player_id"], datetime.now(timezone.utc)
+                )
+                for player in player_list
+            }
             self.logger.debug(f'Seeder status updated for server "{rcon_server_url}"')
         else:
+            self.seeders[rcon_server_url] = {}
             self.logger.debug(
                 f"Server {rcon_server_url} does not qualify as seeding status at this time (player_count = {len(player_list)}, must be > {global_config.seeding_threshold}).  Skipping."
             )
 
     @atomic()
     async def update_seeders_per_player(
-        self, tg: asyncio.TaskGroup, rcon_server_url, player
+        self, tg: asyncio.TaskGroup, rcon_server_url: str, player: dict
     ):
         player_name = player["name"]
         player_id = player["player_id"]
@@ -158,7 +171,25 @@ class BotTasks(commands.Cog):
                     self.send_seeding_message(rcon_server_url, seeder.player_id)
                 )
 
-    async def send_seeding_message(self, rcon_server_url, player_id):
+        start_time = self.seeders[rcon_server_url].get(player_id)
+        if not start_time:
+            return
+        end_time = datetime.now(timezone.utc)
+
+        try:
+            await Seeding_Session.update_or_create(
+                hll_player=seeder,
+                server=global_config.rcon_url[rcon_server_url],
+                start_time=start_time,
+                defaults={"end_time": end_time},
+            )
+        except Exception:
+            self.logger.exception(
+                f'Failed to update or create seeding session for "{player_name}" ({player_id})'
+            )
+            return
+
+    async def send_seeding_message(self, rcon_server_url: str, player_id: str):
         if not await self.client.send_player_message(
             rcon_server_url,
             player_id,

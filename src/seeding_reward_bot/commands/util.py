@@ -3,7 +3,12 @@ import logging
 import discord
 from discord import ApplicationCommandInvokeError
 from discord.ext import commands
+from pypika_tortoise import Order, analytics
+from pypika_tortoise.terms import Function as PypikaFunction
+from pypika_tortoise.terms import Term
 from tortoise.exceptions import DoesNotExist, IntegrityError
+from tortoise.expressions import Function
+from tortoise.functions import Sum
 from tortoise.transactions import atomic
 
 from seeding_reward_bot.config import global_config
@@ -27,6 +32,47 @@ def command_mention(cmd: discord.ApplicationCommand | None):
     if cmd:
         return f"</{cmd.qualified_name}:{cmd.qualified_id}>"
     return "`cmd unknown`"
+
+
+leaderboard_period_choices = {7: "Weekly", 30: "Monthly", 365: "Yearly"}
+
+
+def get_embed_table(title: str, headers, data, fmt):
+    embed = discord.Embed(title=title)
+
+    if data:
+        content = "\n".join(fmt.format(*row) for row in data)
+    else:
+        content = "None"
+
+    embed.add_field(name=fmt.format(*headers), value=f"```md\n{content}\n```")
+
+    return embed
+
+
+class SumTypeChange(Sum):
+    populate_field_object = False
+
+
+class Greatest(Function):
+    class PypikaGreatest(PypikaFunction):
+        def __init__(self, *terms) -> None:
+            super().__init__("GREATEST", *terms)
+
+    database_func = PypikaGreatest
+
+
+class RankOrderByDesc(Function):
+    def _get_function_field(self, field: Term | str, *default_values) -> PypikaFunction:
+        return analytics.Rank().orderby(field, order=Order.desc)
+
+
+class DateTrunc(Function):
+    class PypikaDateTrunc(PypikaFunction):
+        def __init__(self, term, field) -> None:
+            super().__init__("DATE_TRUNC", field, term)
+
+    database_func = PypikaDateTrunc
 
 
 class BotCommands(commands.Cog):
