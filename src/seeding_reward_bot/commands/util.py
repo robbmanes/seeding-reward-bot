@@ -41,10 +41,13 @@ class BotCommands(commands.Cog):
 
     @staticmethod
     async def get_player_by_player_id(
-        player_id: str, *, other: bool = False
+        player_id: str, *, other: bool = False, update: bool = False
     ) -> HLL_Player:
         try:
-            return await HLL_Player.select_for_update().get(player_id=player_id)
+            hll_player = HLL_Player
+            if update:
+                hll_player = hll_player.select_for_update()
+            return await hll_player.get(player_id=player_id)
         except DoesNotExist:
             message = f"There is no record for that Player ID `{player_id}`"
             if not other:
@@ -102,7 +105,7 @@ class BotCommands(commands.Cog):
         *,
         other: bool = False,
     ) -> None:
-        player = await self.get_player_by_player_id(player_id)
+        player = await self.get_player_by_player_id(player_id, other=other, update=True)
 
         if player.discord_id:
             message = "That `player_id` is already registered to "
