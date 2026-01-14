@@ -49,6 +49,27 @@ class HLLCommands(BotCommands):
         return "\n".join(message)
 
     @hll.command()
+    async def help(self, ctx: discord.ApplicationContext) -> None:
+        """Get help about commands and their use"""
+        embed = discord.Embed.from_dict(dict(global_config.help_embed))
+
+        message = (
+            f"- {command_mention(self.help)} - Show this help.",
+            f"- {command_mention(self.register)} `Player ID` - Will register your Player ID with the bot.  This is so you are able to track and redeem seeding time via discord.",
+            f"- {command_mention(self.seeder)} - See your general time seeding, and how many unclaimed hours you have.",
+            f"- {command_mention(self.claim)} `Hours` - Redeem your seeding time.  One hour of seeding time is `{global_config.seeder_vip_reward_hours}` hour(s) of VIP, starting the moment you claim it.",
+            f"- {command_mention(self.vip)} - Check your current seeding VIP status on the servers.",
+        )
+        message = "\n".join(message)
+
+        if embed.description:
+            embed.description += f"\n{message}"
+        else:
+            embed.description = message
+
+        await ctx.respond(embed=embed)
+
+    @hll.command()
     @option(
         "player_id",
         description="Your Player ID (for Steam your SteamID64) found in the top right of OPTIONS in game",

@@ -1,9 +1,13 @@
-from environs import Env, validate
+from environs import Env, ValidationError, validate
 
 
 class Configuration:
     def __init__(self):
-        rcon_url_validater = validate.URL(schemes=("http", "https"), require_tld=False)
+        rcon_url_validator = validate.URL(schemes=("http", "https"), require_tld=False)
+
+        def json_dict_validator(json):
+            if not isinstance(json, dict):
+                raise ValidationError("Not a dict.")
 
         env = Env(eager=False)
         env.read_env()
@@ -23,7 +27,7 @@ class Configuration:
             "RCON_URL",
             subcast_keys=str,
             subcast_values=int,
-            validate=lambda items: all(rcon_url_validater(item) for item in items),
+            validate=lambda items: all(rcon_url_validator(item) for item in items),
         )
         self.rcon_api_key = env("RCON_API_KEY")
         self.seeding_threshold = env.int(
@@ -36,6 +40,7 @@ class Configuration:
         self.seeding_start_time_utc = env.time("SEEDING_START_TIME_UTC")
         self.seeding_end_time_utc = env.time("SEEDING_END_TIME_UTC")
         self.allow_messages_to_players = env.bool("ALLOW_MESSAGES_TO_PLAYERS")
+        self.help_embed = env.json("HELP_EMBED", {}, validate=json_dict_validator)
 
         env.seal()
 
