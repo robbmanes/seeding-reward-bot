@@ -164,6 +164,8 @@ class HLL_RCON_Client:
             # We need to verify numerical input
             try:
                 if vip["player_id"] == player_id:
+                    if vip["name"].startswith("Temp VIP"):
+                        return None
                     return vip["vip_expiration"]
             except ValueError as e:
                 self.logger.error(f"Improper Player ID for VIP entry from RCON: {e}")
