@@ -7,7 +7,7 @@ from tortoise.transactions import atomic
 
 from seeding_reward_bot.commands.util import (
     BotCommands,
-    get_embed_table,
+    add_embed_table,
 )
 from seeding_reward_bot.db import HLL_Player
 from seeding_reward_bot.main import HLLDiscordBot
@@ -190,11 +190,13 @@ class HLLAdminCommands(BotCommands):
             "Player ID": "player_id",
         }
         players = await HLL_Player.filter(hidden=True).values_list(*columns.values())
-        embed = get_embed_table(
-            "Players Hidden from Seeding Leaderboard",
-            columns.keys(),
-            players,
-            "{} ({})",
+
+        embed = discord.Embed(title="Players Hidden from Seeding Leaderboard")
+        embed = add_embed_table(
+            embed,
+            headers=columns.keys(),
+            data=players,
+            fmt="{} ({})",
         )
 
         await ctx.respond(embed=embed, ephemeral=True)

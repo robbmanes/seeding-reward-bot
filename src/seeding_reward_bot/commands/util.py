@@ -1,5 +1,8 @@
 import logging
+from collections.abc import Iterable
+from datetime import datetime
 
+import dateparser
 import discord
 from discord import ApplicationCommandInvokeError
 from discord.ext import commands
@@ -7,7 +10,11 @@ from pypika_tortoise import Order, analytics
 from pypika_tortoise.terms import Function as PypikaFunction
 from pypika_tortoise.terms import Term
 from tortoise.exceptions import DoesNotExist, IntegrityError
-from tortoise.expressions import Function
+from tortoise.expressions import (
+    CombinedExpression,
+    Connector,
+    Function,
+)
 from tortoise.functions import Sum
 from tortoise.transactions import atomic
 
@@ -34,12 +41,33 @@ def command_mention(cmd: discord.ApplicationCommand | None):
     return "`cmd unknown`"
 
 
+def parse_datetime(str_datetime: str) -> datetime:
+    parsed_datetime = dateparser.parse(
+        str_datetime, settings={"TIMEZONE": "UTC", "RETURN_AS_TIMEZONE_AWARE": True}
+    )
+    if not parsed_datetime:
+        message = (
+            "Couldn't interpret the datetime",
+            "A few examples of what works:",
+            "• `4/12/42 16:55 ET`",
+            "• `January 11 2042 2:47pm PT`",
+            "• `yesterday`",
+            "• `Now`",
+        )
+        raise EphemeralError("\n".join(message))
+    return parsed_datetime
+
+
 leaderboard_period_choices = {7: "Weekly", 30: "Monthly", 365: "Yearly"}
 
 
-def get_embed_table(title: str, headers, data, fmt):
-    embed = discord.Embed(title=title)
-
+def add_embed_table(
+    embed: discord.Embed,
+    *,
+    headers: Iterable[str],
+    data: Iterable[Iterable[str]],
+    fmt: str,
+):
     if data:
         content = "\n".join(fmt.format(*row) for row in data)
     else:
@@ -60,6 +88,17 @@ class Greatest(Function):
             super().__init__("GREATEST", *terms)
 
     database_func = PypikaGreatest
+
+
+class Least(Function):
+    class PypikaLeast(PypikaFunction):
+        def __init__(self, *terms) -> None:
+            super().__init__("LEAST", *terms)
+
+    database_func = PypikaLeast
+
+    def __sub__(self, other) -> CombinedExpression:
+        return CombinedExpression(self, Connector.sub, other)
 
 
 class RankOrderByDesc(Function):
