@@ -98,6 +98,7 @@ class HLLAdminCommands(BotCommands):
         await ctx.respond("\n".join(message), ephemeral=True)
 
     @hll_admin.command()
+    @guild_only()
     @option("user", description="Discord user to register")
     @option(
         "player_id",
