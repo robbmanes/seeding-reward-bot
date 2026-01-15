@@ -3,7 +3,6 @@ from datetime import datetime, timedelta, timezone
 import discord
 from discord import guild_only
 from discord.commands import SlashCommandGroup, option
-from tortoise.expressions import F
 from tortoise.functions import Count
 from tortoise.transactions import atomic
 
@@ -13,11 +12,13 @@ from seeding_reward_bot.commands.util import (
     EphemeralError,
     EphemeralMentionError,
     Greatest,
+    Least,
     RankOrderByDesc,
     SumTypeChange,
+    add_embed_table,
     command_mention,
-    get_embed_table,
     leaderboard_period_choices,
+    parse_datetime,
 )
 from seeding_reward_bot.config import global_config
 from seeding_reward_bot.db import Seeding_Session
@@ -113,11 +114,10 @@ class HLLCommands(BotCommands):
         "hours",
         input_type=int,
         description=f"Seeding hours to claim, at a conversion of one seeding hour = {global_config.seeder_vip_reward_hours} hour(s) of VIP",
-        required=False,
         min_value=1,
     )
     @atomic()
-    async def claim(self, ctx: discord.ApplicationContext, hours: int | None) -> None:
+    async def claim(self, ctx: discord.ApplicationContext, hours: int | None = None) -> None:
         """Redeem seeding hours for VIP status"""
         await ctx.defer(ephemeral=True)
 
@@ -249,10 +249,20 @@ class HLLCommands(BotCommands):
             discord.OptionChoice(name.lower(), days)
             for days, name in leaderboard_period_choices.items()
         ],
-        default=next(iter(leaderboard_period_choices)),
     )
-    async def show(self, ctx: discord.ApplicationContext, period: int) -> None:
+    @option(
+        "end",
+        description="What date and time to use as the end of the shown leaderboard period",
+    )
+    async def show(
+        self,
+        ctx: discord.ApplicationContext,
+        period: int = next(iter(leaderboard_period_choices)),
+        end: str = "now",
+    ) -> None:
         """Show the current leaderboard for seeding time"""
+        period_end = parse_datetime(end)
+
         await ctx.defer()
 
         columns = {
@@ -261,11 +271,14 @@ class HLLCommands(BotCommands):
             "Sessions": "sessions",
             "duration": "duration",
         }
-        period_start = datetime.now(timezone.utc) - timedelta(days=period)
-        duration = SumTypeChange(F("end_time") - Greatest("start_time", period_start))
+        period_start = period_end - timedelta(days=period)
+        duration = SumTypeChange(
+            Least("end_time", period_end) - Greatest("start_time", period_start)
+        )
         rows = (
             await Seeding_Session.filter(
                 end_time__gte=period_start,
+                start_time__lte=period_end,
                 hll_player__hidden=False,
             )
             .annotate(
@@ -278,11 +291,17 @@ class HLLCommands(BotCommands):
             .limit(20)
             .values_list(*columns.values())
         )
-        embed = get_embed_table(
-            f"{leaderboard_period_choices[period]} Seeding Leaderboard",
-            columns.keys(),
-            rows,
-            "{}. [{}][{}]: {}",
+        embed = discord.Embed(
+            title=f"{leaderboard_period_choices[period]} Seeding Leaderboard",
+            description=f"Starting at <t:{int(period_start.timestamp())}:s>",
+            timestamp=period_end,
+            footer=discord.EmbedFooter("Until"),
+        )
+        embed = add_embed_table(
+            embed,
+            headers=columns.keys(),
+            data=rows,
+            fmt="{}. [{}][{}]: {}",
         )
 
         await ctx.respond(embed=embed)
