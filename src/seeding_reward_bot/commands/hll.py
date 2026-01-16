@@ -1,8 +1,10 @@
+import zoneinfo
 from datetime import datetime, timedelta, timezone
 
 import discord
 from discord import guild_only
 from discord.commands import SlashCommandGroup, option
+from tortoise.expressions import F
 from tortoise.functions import Count
 from tortoise.transactions import atomic
 
@@ -17,7 +19,6 @@ from seeding_reward_bot.commands.util import (
     SumTypeChange,
     add_embed_table,
     command_mention,
-    leaderboard_period_choices,
     parse_datetime,
 )
 from seeding_reward_bot.config import global_config
@@ -138,7 +139,9 @@ class HLLCommands(BotCommands):
         min_value=1,
     )
     @atomic()
-    async def claim(self, ctx: discord.ApplicationContext, hours: int | None = None) -> None:
+    async def claim(
+        self, ctx: discord.ApplicationContext, hours: int | None = None
+    ) -> None:
         """Redeem seeding hours for VIP status"""
         await ctx.defer(ephemeral=True)
 
@@ -265,25 +268,97 @@ class HLLCommands(BotCommands):
     @hll_leaderboard.command()
     @option(
         "period",
-        description="Which leaderboard to show",
-        choices=[
-            discord.OptionChoice(name.lower(), days)
-            for days, name in leaderboard_period_choices.items()
-        ],
+        description="Which leaderboard period to show",
+        choices=["weekly", "monthly", "yearly"],
     )
     @option(
-        "end",
-        description="What date and time to use as the end of the shown leaderboard period",
+        "reference",
+        description="What date to use as the reference of the shown leaderboard period",
+    )
+    @option(
+        "timezone",
+        description="What timezone to use",
+        autocomplete=discord.utils.basic_autocomplete(zoneinfo.available_timezones()),
     )
     async def show(
         self,
         ctx: discord.ApplicationContext,
-        period: int = next(iter(leaderboard_period_choices)),
-        end: str = "now",
+        period: str = "weekly",
+        reference: str = "now",
+        timezone: str = global_config.leaderboard_default_timezone,
     ) -> None:
-        """Show the current leaderboard for seeding time"""
-        period_end = parse_datetime(end)
+        """Show the period leaderboard for seeding time"""
 
+        tzinfo = zoneinfo.ZoneInfo(timezone)
+        ref_datetime = parse_datetime(reference, timezone)
+
+        match period:
+            case "weekly":
+                start = datetime(
+                    ref_datetime.year,
+                    ref_datetime.month,
+                    ref_datetime.day,
+                    tzinfo=tzinfo,
+                ) - timedelta(days=ref_datetime.weekday())
+                end = start + timedelta(weeks=1)
+            case "monthly":
+                start = datetime(
+                    ref_datetime.year,
+                    ref_datetime.month,
+                    1,
+                    tzinfo=tzinfo,
+                )
+                if ref_datetime.month == 12:
+                    end = start.replace(year=ref_datetime.year + 1, month=1)
+                else:
+                    end = start.replace(month=ref_datetime.month + 1)
+            case "yearly":
+                start = datetime(
+                    ref_datetime.year,
+                    1,
+                    1,
+                    tzinfo=tzinfo,
+                )
+                end = start.replace(year=ref_datetime.year + 1)
+
+        await self._leaderboard(
+            ctx,
+            start,
+            end,
+            f"{period.capitalize()} Seeding Leaderboard",
+        )
+
+    @hll_leaderboard.command()
+    @option(
+        "start",
+        description="Start date and time to show the leaderboard for",
+    )
+    @option(
+        "end",
+        description="End date and time to show the leaderboard for",
+    )
+    async def show_range(
+        self,
+        ctx: discord.ApplicationContext,
+        start: str,
+        end: str,
+    ) -> None:
+        """Show the range leaderboard for seeding time"""
+
+        await self._leaderboard(
+            ctx,
+            parse_datetime(start, global_config.leaderboard_default_timezone),
+            parse_datetime(end, global_config.leaderboard_default_timezone),
+            "Seeding Leaderboard",
+        )
+
+    async def _leaderboard(
+        self,
+        ctx: discord.ApplicationContext,
+        start: datetime,
+        end: datetime,
+        title: str,
+    ) -> None:
         await ctx.defer()
 
         columns = {
@@ -292,17 +367,20 @@ class HLLCommands(BotCommands):
             "Sessions": "sessions",
             "duration": "duration",
         }
-        period_start = period_end - timedelta(days=period)
-        duration = SumTypeChange(
-            Least("end_time", period_end) - Greatest("start_time", period_start)
+
+        seeding_session = Seeding_Session.filter(
+            end_time__gte=start,
+            hll_player__hidden=False,
         )
+        if end < datetime.now(timezone.utc):
+            seeding_session = seeding_session.filter(start_time__lt=end)
+            end_func = Least("end_time", end)
+        else:
+            end_func = F("end_time")
+        duration = SumTypeChange(end_func - Greatest("start_time", start))
+
         rows = (
-            await Seeding_Session.filter(
-                end_time__gte=period_start,
-                start_time__lte=period_end,
-                hll_player__hidden=False,
-            )
-            .annotate(
+            await seeding_session.annotate(
                 duration=DateTrunc(duration, "second"),
                 sessions=Count("hll_player_id"),
                 rank=RankOrderByDesc(duration),
@@ -313,9 +391,9 @@ class HLLCommands(BotCommands):
             .values_list(*columns.values())
         )
         embed = discord.Embed(
-            title=f"{leaderboard_period_choices[period]} Seeding Leaderboard",
-            description=f"Starting at <t:{int(period_start.timestamp())}:s>",
-            timestamp=period_end,
+            title=title,
+            description=f"Starting at <t:{int(start.timestamp())}:s>",
+            timestamp=end,
             footer=discord.EmbedFooter("Until"),
         )
         embed = add_embed_table(

@@ -41,13 +41,13 @@ def command_mention(cmd: discord.ApplicationCommand | None):
     return "`cmd unknown`"
 
 
-def parse_datetime(str_datetime: str) -> datetime:
+def parse_datetime(str_datetime: str, timezone: str) -> datetime:
     parsed_datetime = dateparser.parse(
-        str_datetime, settings={"TIMEZONE": "UTC", "RETURN_AS_TIMEZONE_AWARE": True}
+        str_datetime, settings={"TIMEZONE": timezone, "RETURN_AS_TIMEZONE_AWARE": True}
     )
     if not parsed_datetime:
         message = (
-            "Couldn't interpret the datetime",
+            f'Couldn\'t interpret the datetime from "{str_datetime}"',
             "A few examples of what works:",
             "• `4/12/42 16:55 ET`",
             "• `January 11 2042 2:47pm PT`",
@@ -56,9 +56,6 @@ def parse_datetime(str_datetime: str) -> datetime:
         )
         raise EphemeralError("\n".join(message))
     return parsed_datetime
-
-
-leaderboard_period_choices = {7: "Weekly", 30: "Monthly", 365: "Yearly"}
 
 
 def add_embed_table(
