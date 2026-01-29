@@ -20,6 +20,7 @@ from seeding_reward_bot.commands.util import (
     add_embed_table,
     command_mention,
     parse_datetime,
+    parse_to_start_end,
 )
 from seeding_reward_bot.config import global_config
 from seeding_reward_bot.db import Seeding_Session
@@ -269,7 +270,7 @@ class HLLCommands(BotCommands):
     @option(
         "period",
         description="Which leaderboard period to show",
-        choices=["weekly", "monthly", "yearly"],
+        choices=["daily", "weekly", "monthly", "yearly"],
     )
     @option(
         "reference",
@@ -288,38 +289,7 @@ class HLLCommands(BotCommands):
         timezone: str = global_config.leaderboard_default_timezone,
     ) -> None:
         """Show the period leaderboard for seeding time"""
-
-        tzinfo = zoneinfo.ZoneInfo(timezone)
-        ref_datetime = parse_datetime(reference, timezone)
-
-        match period:
-            case "weekly":
-                start = datetime(
-                    ref_datetime.year,
-                    ref_datetime.month,
-                    ref_datetime.day,
-                    tzinfo=tzinfo,
-                ) - timedelta(days=ref_datetime.weekday())
-                end = start + timedelta(weeks=1)
-            case "monthly":
-                start = datetime(
-                    ref_datetime.year,
-                    ref_datetime.month,
-                    1,
-                    tzinfo=tzinfo,
-                )
-                if ref_datetime.month == 12:
-                    end = start.replace(year=ref_datetime.year + 1, month=1)
-                else:
-                    end = start.replace(month=ref_datetime.month + 1)
-            case "yearly":
-                start = datetime(
-                    ref_datetime.year,
-                    1,
-                    1,
-                    tzinfo=tzinfo,
-                )
-                end = start.replace(year=ref_datetime.year + 1)
+        start, end = parse_to_start_end(period, reference, timezone)
 
         await self._leaderboard(
             ctx,

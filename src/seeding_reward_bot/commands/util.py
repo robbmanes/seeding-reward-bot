@@ -1,6 +1,7 @@
 import logging
+import zoneinfo
 from collections.abc import Iterable
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import dateparser
 import discord
@@ -56,6 +57,51 @@ def parse_datetime(str_datetime: str, timezone: str) -> datetime:
         )
         raise EphemeralError("\n".join(message))
     return parsed_datetime
+
+
+def parse_to_start_end(
+    period: str, reference: str, timezone: str
+) -> tuple[datetime, datetime]:
+    tzinfo = zoneinfo.ZoneInfo(timezone)
+    ref_datetime = parse_datetime(reference, timezone)
+
+    match period:
+        case "daily":
+            start = datetime(
+                ref_datetime.year,
+                ref_datetime.month,
+                ref_datetime.day,
+                tzinfo=tzinfo,
+            )
+            end = start + timedelta(days=1)
+        case "weekly":
+            start = datetime(
+                ref_datetime.year,
+                ref_datetime.month,
+                ref_datetime.day,
+                tzinfo=tzinfo,
+            ) - timedelta(days=ref_datetime.weekday())
+            end = start + timedelta(weeks=1)
+        case "monthly":
+            start = datetime(
+                ref_datetime.year,
+                ref_datetime.month,
+                1,
+                tzinfo=tzinfo,
+            )
+            if ref_datetime.month == 12:
+                end = start.replace(year=ref_datetime.year + 1, month=1)
+            else:
+                end = start.replace(month=ref_datetime.month + 1)
+        case "yearly":
+            start = datetime(
+                ref_datetime.year,
+                1,
+                1,
+                tzinfo=tzinfo,
+            )
+            end = start.replace(year=ref_datetime.year + 1)
+    return start, end
 
 
 def add_embed_table(
