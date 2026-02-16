@@ -8,6 +8,8 @@ from tortoise.expressions import F
 from tortoise.functions import Count
 from tortoise.transactions import atomic
 
+from casino import Bet, BetTypes, Roulette
+
 from seeding_reward_bot.commands.util import (
     BotCommands,
     DateTrunc,
@@ -35,6 +37,9 @@ class HLLCommands(BotCommands):
     hll = SlashCommandGroup("hll", "Seeding commands")
     hll_leaderboard = hll.create_subgroup(
         "leaderboard", "Seeding leaderboard and stats"
+    )
+    roulette = hll.create_subgroup(
+        'roulette', 'Bet your seeding hours in a game of roulette! (Must have at least 20 Seeding hours to play)'
     )
 
     def hours_help_msg(
@@ -375,6 +380,60 @@ class HLLCommands(BotCommands):
 
         await ctx.respond(embed=embed)
 
+    @roulette.command()
+    @guild_only()
+    @option("bet_type", 
+            input_type=str,
+            description="Type of bet to place - (single, dozen (1, 2, 3), color (red, black), odd/even (odd, even), half (1, 2))",
+            required=True)
+    @option("bet_value",
+            input_type=str,
+            description="Value of the bet - (for single: 0-36, for dozen: 1, 2, or 3, for color: red or black, for odd/even: odd or even, for half: 1 or 2)",
+            required=True)
+    @option(
+        "amount",
+        input_type=int,
+        description="Amount of seeding hours to bet",
+        required=True,
+        min_value=1,
+    )
+    @atomic()
+    async def roulette(self, ctx: discord.ApplicationContext, bet_type: str, bet_value : str, amount: int) -> None:
+        """Play a game of roulette!  (for testing)"""
+        await ctx.defer()
+
+        player = await self.get_player_by_discord_id(ctx.author.id)
+        seeding_hours = player.seeding_time_balance // timedelta(hours=1)
+        if seeding_hours < 20:
+            raise EphemeralMentionError(
+                f"Sorry, you need at least 20 hours of seeding time to play roulette (Currently have `{seeding_hours:,}` banked hours)."
+            )
+
+        try:
+            bet = Bet(bet_type, bet_value, amount)
+        except Exception as e:
+            raise EphemeralMentionError(f"Invalid bet: {e}")
+
+        # Remove the bet amount from the player's seeding time balance, then add winnings if applicable.
+        await player.save(update_fields=["seeding_time_balance"])
+
+        roulette = Roulette()
+        payout, number_result, color_result = roulette.spin(bet)
+
+        if payout > 0:
+            player.seeding_time_balance += timedelta(hours=amount * payout) 
+        else:
+            player.seeding_time_balance -= timedelta(hours=amount)
+
+        await player.save(update_fields=["seeding_time_balance"])
+
+        message = (
+            f"{ctx.autho.mention} spun the roulette wheel with bet `{bet.bet_type} {bet.bet_value} {bet.amount}` and got `{number_result} {color_result}`!",
+            f"You {'won' if payout > 0 else 'lost'} `{amount * payout}` hour(s) of seeding time!",
+            f"Your new seeding time balance is `{player.seeding_time_balance // timedelta(hours=1):,}` hour(s)."
+        )
+
+        await ctx.respond("\n".join(message), ephemeral=False)
 
 def setup(bot: HLLDiscordBot):
     bot.add_cog(HLLCommands(bot))
